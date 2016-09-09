@@ -5,6 +5,18 @@ import numpy as np
 import numpy.random as rnd
 from matplotlib.patches import Polygon
 from math import *
+from bisect import *
+from copy import *
+
+
+def isMultipleOf (larger, smaller):
+    if smaller == 0:
+        return False
+    quotient = larger/smaller
+    if modf (quotient)[0] == 0.0: # larger value is a multiple of the smaller value
+        return True
+    return False
+
 
 
 class MeanVariance:
@@ -63,13 +75,15 @@ class MeanVariance:
 
 class Block:
 
-    def __init__ (self, **kwargs): 
+    def __init__ (self, **kwargs):
         self._binWidth = float (kwargs.get ('binWidth', 1.0))
         self._startValue = float (kwargs.get ('startValue', 0.0))
         self._endValue = float (kwargs.get ('endValue', 0.0))
         self._discrete = float (kwargs.get ('discrete', False))
+        self._stepWidth = float (kwargs.get ('stepWidth', 0))
         self._color = kwargs.get ('color', 'r')
         self.EqualFloatMode = kwargs.get ('equalFloatMode', "float")
+        
 
     def color (self):
         return self._color
@@ -96,6 +110,8 @@ class Block:
         self._discrete = _discrete
         
     def interpolate (self, x):
+        if self.binWidth () == 0.0:
+            return self.endValue ()
         return self.startValue () + ((self.endValue () - self.startValue ())/self.binWidth ())*x
 
     def estimateLowEqualHigh (self, y):
@@ -110,12 +126,23 @@ class Block:
         equal = 0
         higher = 0
         if self._discrete:
-            if ceil (y) == y: # test for discreteness
-                numDiscretes = floor (self.endValue () - self.startValue ()) + 1
-                equal = self.binWidth () / numDiscretes
-                    
+            if self._stepWidth == 0:
+                equal = self.binWidth ()
             else:
-                equal = 0.0
+                numDiscretes = floor (abs ((diff+self._stepWidth) / self._stepWidth))
+                if isMultipleOf (localY, self._stepWidth):
+                    equal = self.binWidth () / numDiscretes
+                else:
+                    equal = 0.0
+
+                remaining = self.binWidth () - equal
+                numDiscretesBelow = floor (localY/self._stepWidth)
+                if equal == 0.0:
+                    numDiscretesBelow += 1.0
+                lower =  numDiscretesBelow * (self.binWidth () / numDiscretes)
+                higher = remaining - lower
+                return lower, equal,  higher
+                    
         else:
             if self.EqualFloatMode == "1":
                 equal = 1.0
@@ -134,6 +161,37 @@ class Block:
 
         return lower, equal, higher
 
+
+    def sub (self, yStart, yEnd): # get sub-block from start to end value
+        yStart = max (yStart, self.startValue ())
+        yEnd = min (yEnd, self.endValue ())
+
+        if self._discrete:
+            diff = yStart - self.startValue ()
+            if not isMultipleOf (diff, self._binWidth): # if yStart cuts not at a discrete value
+                split = modf (diff/self._binWidth)
+                yStart = split[1] + 1 if split[0] >= 0.5 else 0
+            diff = yEnd - self.endValue ()
+            if not isMultipleOf (diff, self._binWidth): # if yStart cuts not at a discrete value
+                split = modf (diff/self._binWidth)
+                yEnd = split[1] + 1 if split[0] >= 0.5 or split[1] <= yStart else 0
+                
+
+        estEnd = self.estimateLowEqualHigh (yEnd)
+        estStart = self.estimateLowEqualHigh (yStart)
+
+        binWidth = estStart[2] - estEnd[2]
+
+        return Block (binWidth = binWidth, startValue = yStart, endValue = yEnd, discrete = self._discrete, 
+        self._binWidth = float (kwargs.get ('binWidth', 1.0))
+        self._startValue = float (kwargs.get ('startValue', 0.0))
+        self._endValue = float (kwargs.get ('endValue', 0.0))
+        self._discrete = float (kwargs.get ('discrete', False))
+        self._stepWidth = float (kwargs.get ('stepWidth', 0))
+        self._color = kwargs.get ('color', 'r')
+        self.EqualFloatMode = kwargs.get ('equalFloatMode', "float")
+        
+    
     
     def __eq__(self, other):
         if isinstance(other, self.__class__): # 'other' is a block
@@ -174,11 +232,14 @@ def meanList (data):
 
 
 
+
+
+
 def bucket (data, **kwargs): 
     limit = kwargs.get ('limit',0.1)
     depth = kwargs.get ('depth',3)
 
-
+    print "data : ",data
     currCol = 'r'
     try:
         currCol = col[int(ceil(depth))]
@@ -187,12 +248,22 @@ def bucket (data, **kwargs):
 
     lenData = len(data)
 
-    isDiscrete = True;
-    for x in data:
-        if ceil (x) != x:
-            isDiscrete = False
-        
-    
+    distinctValues = set (data)
+    stepWidth = 0
+    isDiscrete = False
+    if len (distinctValues) > 1: # contains more than one distinct value
+        distinctValues = list (distinctValues)
+        distinctValues.sort ()
+        if len (distinctValues) == 2: # exactly two values
+            isDiscrete = True
+            stepWith = distinctValues[1] - distinctValues[0]
+        else:
+            distances = [nxt - prv for prv, nxt in zip (distinctValues[:-1], distinctValues[1:])]
+            stepWidth = min (distances)
+            isDiscrete = not True in [isMultipleOf(d, stepWidth) for d in distances]
+            if not isDiscrete:
+                stepWith = 0.0
+
     forward = { "mean" : [], "stdDev" : []}
     forward['stdDev'] = meanList (data)
 
@@ -200,7 +271,8 @@ def bucket (data, **kwargs):
 
     
     if totalStdDev < limit  or depth < 1.0:
-        return [Block (binWidth = lenData,  startValue = data[0], endValue = data[-1], color = currCol, discrete = isDiscrete)]
+        print "block of data ",data,"   startValue = ",data[0], "   endValue = ",data[-1]
+        return [Block (binWidth = lenData,  startValue = data[0], endValue = data[-1], color = currCol, discrete = isDiscrete, stepWidth = stepWidth)]
 
                 
     backward = { "mean" : [], "stdDev" : []}
@@ -222,7 +294,8 @@ def bucket (data, **kwargs):
 
     # if no split
     if minIndex == 0 or minIndex+1 == lenData:
-        return [Block (binWidth = lenData, startValue = data[0], endValue = data[-1], color = currCol, discrete = isDiscrete)]
+        print "block of data ",data,"   startValue = ",data[0], "   endValue = ",data[-1]
+        return [Block (binWidth = lenData, startValue = data[0], endValue = data[-1], color = currCol, discrete = isDiscrete, stepWidth = stepWidth)]
 
     # depth = depth -1
     leftDepth = (depth * (float(minIndex)/lenData))
@@ -234,14 +307,83 @@ def bucket (data, **kwargs):
     return buckets
 
 
+
+def merge (adaptive, adaptiveOther):
+    itBlock = iter (adaptive._blocks)
+    itOther = iter (adaptiveOther._blocks)
+
+    # fetch the first blocks of each
+    objBlock = None
+    objOther = None
+    try: 
+        objBlock = next (itBlock)
+    except StopIteration:
+        return adaptiveOther._blocks
+
+    try:
+        objOther = next (itOther)
+    except StopIteration:
+        return adaptive._blocks
+
+    result = []
+
+    if objBlock.endValue () < objOther.startValue (): # objBlock is strictly left of objOther
+        result.append (deepcopy (objBlock))
+    elif objOther.endValue () < objBlock.startValue (): # objOther is strictly left of objBlock
+        result.append (deepcopy (objOther))
+    else:
+        leftBlock = objBlock
+        rightBlock = objOther
+        if leftBlock.startValue () > rightBlock.startValue ():
+            leftBlock,rightBlock = rightBlock,leftBlock # swap values
+
+        # leftBlock starts leftwards from right block. No dependence on where the block stops
+        
+        
+
+    
+    return adaptive._blocks;
+
+
         
 class AdaptiveBinning:
-    def __init__(self, data):
+    
+    numUnbinned = 20
+
+    
+    def __init__(self, data, **kwargs): # sort=True/False (enable/disable sorting of the data)
         #data.sort ()
-        self._blocks = bucket (data, limit=0.05, depth=20)
+        self._doSort = kwargs.get ('sort', True)
+        self._unbinned = []
+        self._blocks = []
+        self.__add__ (data)
 
+    def __add__ (self, data):
+        self._unbinned.extend (data)
+        if self._doSort:
+            self._unbinned.sort ()
+        if len (self._unbinned) > AdaptiveBinning.numUnbinned:
+            self.histogramify ()
+        return self
 
+    def histogramify (self):
+        if len (self._unbinned) == 0:
+            return
+        blocks = bucket (self._unbinned, limit=0.05, depth=20)
+        self._unbinned = []
+        if len (self._blocks) == 0:
+            self._blocks = blocks
+        else:
+            # merge histograms
+            adaptiveOther = AdaptiveBinning ([], sort=True)
+            adaptiveOther._blocks = blocks
+            self._blocks = merge (self, adaptiveOther)
+
+            
+        
     def scale (self, factor):
+        self.histogramify () # we need a histogram to be able to scale it
+        
         for b in self._blocks:
             b.setBinWidth (b.binWidth () * factor)
 
@@ -250,10 +392,12 @@ class AdaptiveBinning:
         cnt = 0
         for b in self._blocks:
             cnt += b.binWidth ()
-        return cnt
+        return cnt + len (self._unbinned)
 
     
     def value (self, x):
+        self.histogramify () # we need a histogram to be able to interpolate
+        
         lower = 0.0
 
         targetBlock = None
@@ -273,11 +417,14 @@ class AdaptiveBinning:
         
         return 0.0
 
-    def startValue ():
-        return b[0].startValue ()
     
-    def endValue ():
-        return b[-1].endValue ()
+    def minValue ():
+        m = min ([min (b.startValue (), b.endValue ()) for b in self._blocks])
+        return min (min (self._unbinned), m)
+    
+    def maxValue ():
+        m = max ([max (b.startValue (), b.endValue ()) for b in self._blocks])
+        return min (max (self._unbinned), m)
     
     
     def estimateLowEqualHigh (self, y):
@@ -285,6 +432,9 @@ class AdaptiveBinning:
         higher = 0.0
         equal = 0.0
 
+        if not self._doSort:
+            return 0.0
+        
         targetBlock = None
         for b in self._blocks:
             if b.startValue () > y:
@@ -300,6 +450,15 @@ class AdaptiveBinning:
             higher += h
             equal = e
 
+        if len (self._unbinned) > 0:
+            idx = bisect_left (self._unbinned, y)
+            if idx:
+                lower += idx
+                higher += len (self._unbinned) - idx
+                if idx < len (self._unbinned) and self._unbinned[idx] == y:
+                    equal += 1
+                    higher -= 1
+            
         return lower,equal,higher
     
             
@@ -319,7 +478,8 @@ def draw (data, **kwargs):
     vax.plot(t, data, '-b^')
 #    vax.vlines(t, [0], data, lw = 2, linestyles='dashed')
     vax.set_xlabel('index')
-    vax.set_title('Number of counts')
+    vax.set_ylabel('value')
+    vax.set_title('value')
 
 
     forward = { "mean" : [], "stdDev" : []}
@@ -354,7 +514,9 @@ def draw (data, **kwargs):
     currentPosition = 0
     for block in blocks:
         nextPosition = currentPosition + block.binWidth ()
-        verts = [(currentPosition,0),(nextPosition,0),(nextPosition,block.interpolate (block.binWidth ()+1)),(currentPosition,block.interpolate (0))]
+        print "block sv = ",block.startValue (),"  ev = ",block.endValue ()
+        #verts = [(currentPosition,0),(nextPosition,0),(nextPosition,block.interpolate (block.binWidth ()+1)),(currentPosition,block.interpolate (0))]
+        verts = [(currentPosition,0),(nextPosition,0),(nextPosition,block.interpolate (block.binWidth ())),(currentPosition,block.interpolate (0))]
         #poly = Polygon(verts, facecolor='0.9', edgecolor='0.5', color='r', alpha=0.2)
         poly = Polygon(verts, color=block.color (), alpha=0.2)
         vax.add_patch(poly)
@@ -375,9 +537,14 @@ def draw (data, **kwargs):
         additionalData = zip (origData,origData[1:])
         additionalData = [(a+b)/2.0 for a,b in additionalData if a != b]
         extendedData = origData + additionalData
-        #print extendedData
+        print "orig = ",origData
+        print "add  = ",additionalData
+        extendedData = list (set (extendedData))
         extendedData.sort ()
+        print "ext  = ",extendedData
 
+        extendedData = np.arange (0.0,11.0,0.2)
+        
         for d in extendedData:
             y.append (d)
             low,equ,high = countEstimation.estimateLowEqualHigh (d)
@@ -385,14 +552,16 @@ def draw (data, **kwargs):
             highCount = totCount - high
             xHigh.append (highCount)
 
-        idx = [x/2.0 for x in range (0, len (extendedData))]
+        #idx = [x/2.0 for x in range (0, len (extendedData))]
+        idx = [x/5.0 for x in range (0, int(countEstimation.count () * 5))]
         for i in idx:    
             xInter.append (countEstimation.value (i))
             
         plt.errorbar (xLow, y, yerr = [0]*len(y), capsize =1, color='r', linestyle = 'dashdot', fmt='o')
         plt.errorbar (xHigh, y, yerr = [0]*len(y), capsize =1, color='c', linestyle = 'dashdot', fmt='o')
-        plt.errorbar (idx, xInter, yerr = [0]*len(idx), capsize =5, color='k', linestyle = 'solid', fmt='o')
-            
+        plt.errorbar (idx, xInter, yerr = [0]*len(idx), capsize =5, color='k', linestyle = '', fmt='x')
+
+        print "high ",zip (y,xHigh)
         
     plt.show()
 
@@ -410,7 +579,7 @@ def testDrawVarying ():
     data = np.concatenate ((data0,data1,data2,data3,data4), axis=0)
     #data = data0
 
-    data = rnd.beta (2,0.2,50)
+    data = rnd.beta (6,4,20)
     data = [10 * x -3 for x in data]
 
 #    dataZero = rnd.triangular (0,0,1,1)
@@ -419,13 +588,15 @@ def testDrawVarying ():
 #    data2 = rnd.triangular (20, 21, 21, 0)
 #    data = np.concatenate ((data0, data1, data2), axis=0)
 
-    #data = rnd.triangular (0, 10, 15, 200)
+#    data = rnd.triangular (0, 10, 15, 200)
 
 #    data = np.concatenate ((dataZero,data), axis=0)
 
 #    data = [1,1,2,3,4,4,4,4,4,5,5,5,7,7,7]
+#    data = [2,2,2,4,4,6,8,10]
+    data = [2,2,2,4,5,6,7,7,7,8]
 #    data = [1,1,1,2,2,2,2,4,4,4,4]
-#    data = [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0,4.0,4.0, 4.0, 5.0, 5.0, 5.0, 6.0, 6.0]
+    data = [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0,4.0,4.0, 4.0, 5.0, 5.0, 5.0, 6.0, 6.0]
 
     #data = [sin(x/10.0) for x in xrange (0,200)]
     #print data
@@ -434,10 +605,17 @@ def testDrawVarying ():
     data = np.sort (data)
     #data = np.ceil (data, None)
 
+    addData = [4,4,6,6,8,8,10,10]
+    
     
     #blocks = bucket (data, limit=0.05, depth=3)
-    countEstimation = AdaptiveBinning (list(data))
+    countEstimation = AdaptiveBinning (list(data), sort=True)
+    countEstimation += addData
+    np.concatenate ((data, addData), axis=0)
+    np.sort (data)
+
     blocks = countEstimation._blocks
+    
     draw (data, blocks=blocks, countEstimation = countEstimation)
     #draw (data)
 
