@@ -17,6 +17,20 @@ def isMultipleOf (larger, smaller):
         return True
     return False
 
+def adjustToDiscrete (original, proposed, width):
+    diff = proposed - original
+    if isMultipleOf (diff, width) or diff == 0: # if proposed cuts at a discrete value
+        return proposed, width
+
+#    if diff < 0: # potential cut into a discrete range, but causing a smaller step width
+    if isMultipleOf (width, abs (diff)):
+        return proposed, abs (diff)
+#    else:
+#        return proposed, 0.0
+    
+    # doesn't cut at a discrete value
+    split = modf (diff/width)
+    return original + width * (split[1] + 1 if split[0] >= 0.5 else 0), width
 
 
 class MeanVariance:
@@ -83,7 +97,6 @@ class Block:
         self._stepWidth = float (kwargs.get ('stepWidth', 0))
         self._color = kwargs.get ('color', 'r')
         self.EqualFloatMode = kwargs.get ('equalFloatMode', "float")
-        
 
     def color (self):
         return self._color
@@ -165,42 +178,38 @@ class Block:
     def sub (self, yStart, yEnd): # get sub-block from start to end value
         yStart = max (yStart, self.startValue ())
         yEnd = min (yEnd, self.endValue ())
-
+        width = self._stepWidth
+        
         if self._discrete:
-            diff = yStart - self.startValue ()
-            if not isMultipleOf (diff, self._binWidth): # if yStart cuts not at a discrete value
-                split = modf (diff/self._binWidth)
-                yStart = split[1] + 1 if split[0] >= 0.5 else 0
-            diff = yEnd - self.endValue ()
-            if not isMultipleOf (diff, self._binWidth): # if yStart cuts not at a discrete value
-                split = modf (diff/self._binWidth)
-                yEnd = split[1] + 1 if split[0] >= 0.5 or split[1] <= yStart else 0
-                
+            yStart, width = adjustToDiscrete (self.startValue (), yStart, width)
+            yEndTmp, width = adjustToDiscrete (self.endValue (), yEnd, width)
+            yEnd = max (yStart, yEndTmp)
 
         estEnd = self.estimateLowEqualHigh (yEnd)
         estStart = self.estimateLowEqualHigh (yStart)
 
         binWidth = estStart[2] - estEnd[2]
 
-        return Block (binWidth = binWidth, startValue = yStart, endValue = yEnd, discrete = self._discrete, 
-        self._binWidth = float (kwargs.get ('binWidth', 1.0))
-        self._startValue = float (kwargs.get ('startValue', 0.0))
-        self._endValue = float (kwargs.get ('endValue', 0.0))
-        self._discrete = float (kwargs.get ('discrete', False))
-        self._stepWidth = float (kwargs.get ('stepWidth', 0))
-        self._color = kwargs.get ('color', 'r')
-        self.EqualFloatMode = kwargs.get ('equalFloatMode', "float")
-        
+        return Block (binWidth = binWidth, startValue = yStart, endValue = yEnd, discrete = self._discrete, stepWidth = width, color=self._color, equalFloatMode = self.EqualFloatMode)
     
-    
+    def add (self, other):
+        stepWidth = 0.0;
+        discrete = False
+        if self._discrete and other._discrete:
+            discrete = True
+            stepWidth = min (self._stepWidth, other._stepWidth)
+            
+        return Block (binWidth = self._binWidth + other._binWidth, startValue = self._startValue, stepWidth = stepWidth, endValue = self.endValue (), color = self._color, equalFloatMode = self.EqualFloatMode)
+
+
+                      
     def __eq__(self, other):
         if isinstance(other, self.__class__): # 'other' is a block
             return self.binWidth () == other.binWidth () and self.startValue () == other.startValue () and self.endValue () == other.endValue ()
         return False
     
     def __str__ (self):
-        s = "w = "+str(self.binWidth ())+ " s = "+str(self.startValue ()) + "    e = "+str(self.endValue ()) + "\n"
-        return s
+        return "("+str(self._startValue)+", ... B:"+str(self._binWidth)+" D:"+str(bool(self._discrete))+" S:"+str(self._stepWidth)+" ... "+str(self._endValue)+"]"
 
 
 
@@ -256,13 +265,13 @@ def bucket (data, **kwargs):
         distinctValues.sort ()
         if len (distinctValues) == 2: # exactly two values
             isDiscrete = True
-            stepWith = distinctValues[1] - distinctValues[0]
+            stepWidth = distinctValues[1] - distinctValues[0]
         else:
             distances = [nxt - prv for prv, nxt in zip (distinctValues[:-1], distinctValues[1:])]
             stepWidth = min (distances)
             isDiscrete = not True in [isMultipleOf(d, stepWidth) for d in distances]
             if not isDiscrete:
-                stepWith = 0.0
+                stepWidth = 0.0
 
     forward = { "mean" : [], "stdDev" : []}
     forward['stdDev'] = meanList (data)
@@ -315,34 +324,84 @@ def merge (adaptive, adaptiveOther):
     # fetch the first blocks of each
     objBlock = None
     objOther = None
-    try: 
-        objBlock = next (itBlock)
-    except StopIteration:
-        return adaptiveOther._blocks
-
-    try:
-        objOther = next (itOther)
-    except StopIteration:
-        return adaptive._blocks
 
     result = []
+    while True:
+        # if there is no remaining block, fetch the next one
+        if not objBlock:
+            try: 
+                objBlock = next (itBlock)
+            except StopIteration:
+                pass
 
-    if objBlock.endValue () < objOther.startValue (): # objBlock is strictly left of objOther
-        result.append (deepcopy (objBlock))
-    elif objOther.endValue () < objBlock.startValue (): # objOther is strictly left of objBlock
-        result.append (deepcopy (objOther))
-    else:
-        leftBlock = objBlock
-        rightBlock = objOther
-        if leftBlock.startValue () > rightBlock.startValue ():
-            leftBlock,rightBlock = rightBlock,leftBlock # swap values
+        if not objOther:
+            try:
+                objOther = next (itOther)
+            except StopIteration:
+                pass
 
-        # leftBlock starts leftwards from right block. No dependence on where the block stops
+
+        if not objBlock and not objOther:
+            break
+
+        if objBlock and not objOther:
+            result.append (deepcopy (objBlock))
+            objBlock = None
+            continue
+
+        if objOther and not objBlock:
+            result.append (deepcopy (objOther))
+            objOther = None
+            continue
         
-        
+        if (objBlock.endValue () < objOther.startValue ()): # objBlock is strictly left of objOther
+            result.append (deepcopy (objBlock))
+            objBlock = None
+        elif (objOther.endValue () < objBlock.startValue ()): # objOther is strictly left of objBlock
+            result.append (deepcopy (objOther))
+            objOther = None
+        else:
+            # the two blocks intersect
+            # get the leftmost parts of the intersection
 
-    
-    return adaptive._blocks;
+            # does one of the two blocks start earlier?
+            if objBlock.startValue () < objOther.startValue (): # objBlock starts earlier
+                # get this part of the block
+                fromValue = objBlock.startValue ()
+                toValue = objOther.startValue ()
+                result.append (objBlock.sub (fromValue, toValue)) # extract the part of the block before the overlap
+                objBlock = objBlock.sub (toValue, objBlock.endValue ()) # extract the overlapping part of the block
+                continue # next step
+            
+            elif objOther.startValue () < objBlock.startValue (): # objOther starts earlier
+                # get this part of the block
+                fromValue = objOther.startValue ()
+                toValue = objBlock.startValue ()
+                result.append (objOther.sub (fromValue, toValue)) # extract the part of the block before the overlap
+                objOther = objOther.sub (toValue, objOther.endValue ()) # extract the overlapping part of the block
+                continue # next step
+
+            else: # both start at the same value
+                if objBlock.endValue () == objOther.endValue (): # both blocks end at the same position
+                    result.append (objBlock.add (objOther))
+                    objBlock = None
+                    objOther = None
+                    continue
+
+                else: # blocks end at a different position
+                    if objBlock.endValue () < objOther.endValue (): # block ends before other
+                        result.append (deepcopy (objBlock.add (objOther.sub (objOther.startValue (), objBlock.endValue ()))))
+                        objOther = objOther.sub (objBlock.endValue (), objOther.endValue ())
+                        objBlock = None
+                        continue
+                    
+                    else: # other ends before block
+                        result.append (deepcopy (objOther.add (objBlock.sub (objBlock.startValue (), objOther.endValue ()))))
+                        objBlock = objBlock.sub (objOther.endValue (), objBlock.endValue ())
+                        objOther = None
+                        continue
+            
+    return result;
 
 
         
@@ -462,7 +521,11 @@ class AdaptiveBinning:
         return lower,equal,higher
     
             
-            
+    def __str__ (self):
+        s = ""
+        for b in self._blocks:
+            s += str (b)
+        return s
 
         
 
@@ -514,7 +577,7 @@ def draw (data, **kwargs):
     currentPosition = 0
     for block in blocks:
         nextPosition = currentPosition + block.binWidth ()
-        print "block sv = ",block.startValue (),"  ev = ",block.endValue ()
+        #print "block sv = ",block.startValue (),"  ev = ",block.endValue ()
         #verts = [(currentPosition,0),(nextPosition,0),(nextPosition,block.interpolate (block.binWidth ()+1)),(currentPosition,block.interpolate (0))]
         verts = [(currentPosition,0),(nextPosition,0),(nextPosition,block.interpolate (block.binWidth ())),(currentPosition,block.interpolate (0))]
         #poly = Polygon(verts, facecolor='0.9', edgecolor='0.5', color='r', alpha=0.2)
@@ -537,11 +600,11 @@ def draw (data, **kwargs):
         additionalData = zip (origData,origData[1:])
         additionalData = [(a+b)/2.0 for a,b in additionalData if a != b]
         extendedData = origData + additionalData
-        print "orig = ",origData
-        print "add  = ",additionalData
+        #print "orig = ",origData
+        #print "add  = ",additionalData
         extendedData = list (set (extendedData))
         extendedData.sort ()
-        print "ext  = ",extendedData
+        #print "ext  = ",extendedData
 
         extendedData = np.arange (0.0,11.0,0.2)
         
@@ -561,7 +624,7 @@ def draw (data, **kwargs):
         plt.errorbar (xHigh, y, yerr = [0]*len(y), capsize =1, color='c', linestyle = 'dashdot', fmt='o')
         plt.errorbar (idx, xInter, yerr = [0]*len(idx), capsize =5, color='k', linestyle = '', fmt='x')
 
-        print "high ",zip (y,xHigh)
+        #print "high ",zip (y,xHigh)
         
     plt.show()
 
@@ -606,12 +669,23 @@ def testDrawVarying ():
     #data = np.ceil (data, None)
 
     addData = [4,4,6,6,8,8,10,10]
+
+    data = []
+    addData = []
     
+    data = [2,4]
+    addData = [3]
     
     #blocks = bucket (data, limit=0.05, depth=3)
     countEstimation = AdaptiveBinning (list(data), sort=True)
-    countEstimation += addData
+    countEstimation.histogramify ()
+    print str (countEstimation)
+
     np.concatenate ((data, addData), axis=0)
+
+    countEstimation += addData
+    countEstimation.histogramify ()
+    print str (countEstimation)
     np.sort (data)
 
     blocks = countEstimation._blocks
