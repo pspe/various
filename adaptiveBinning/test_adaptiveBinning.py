@@ -19,6 +19,8 @@ def isMultipleOf (larger, smaller):
 
 
 def nextDiscreteBelow (original, proposed, width, includeEnd=True):
+    if width <= 0.0:
+        return original
     diff = proposed - original
     #numDiscretes = floor (abs ((diff+width) / width))
 
@@ -32,22 +34,11 @@ def nextDiscreteBelow (original, proposed, width, includeEnd=True):
     
         
 
-    if isMultipleOf (diff, width): # is on discrete value
-        if includeEnd:
-            return original + width * numDiscretesBelow
-        else:
-            return original + width * max (0, numDiscretesBelow - 1)
-
-    return original + width * numDiscretesBelow
-        
-
 def nextDiscreteAbove (original, proposed, width):
     diff = proposed - original
     numDiscretes = floor (abs ((diff+width) / width))
 
     numDiscretesBelow = ceil (diff/width)
-    # if isMultipleOf (diff, width): # is on discrete value
-    #     return original + width * (numDiscretes - numDescretesBelow)
 
     return original + width * (numDiscretes - numDiscretesBelow)
 
@@ -59,24 +50,6 @@ def upperValue (lower, upper, width):
     return lower + width * (numDiscretes - 1)
 
 
-def adjustToDiscrete (original, proposed, width):
-    diff = proposed - original
-    numDiscretes = floor (abs ((diff+width) / width))
-    return original + numDiscretes * width
-
-    diff = proposed - original
-    if isMultipleOf (diff, width) or diff == 0: # if proposed cuts at a discrete value
-        return proposed, width
-
-#    if diff < 0: # potential cut into a discrete range, but causing a smaller step width
-    if isMultipleOf (width, abs (diff)):
-        return proposed, abs (diff)
-#    else:
-#        return proposed, 0.0
-    
-    # doesn't cut at a discrete value
-    split = modf (diff/width)
-    return original + width * (split[1] + 1 if split[0] >= 0.5 else 0), width
 
 
 class MeanVariance:
@@ -285,35 +258,35 @@ class Block:
         return Block (binWidth = binWidth, startValue = self._startValue, stepWidth = stepWidth, endValue = self.endValue (), color = self._color)
         
 
-    def canCombine (self, other):
-        kSelf = (self.endValue () - self.startValue ()) / self.binWidth ()
-        kOther = (other.endValue () - other.startValue ()) / other.binWidth ()
-        isKCompatible = abs (kSelf - kOther) <= 0.1
-        stepWidthSmaller = min (self._stepWidth, other._stepWidth)
-        stepWidthLarger  = max (self._stepWidth, other._stepWidth)
-        isCompatibleStepWidth = isMultipleOf (stepWidthLarger, stepWidthSmaller)
+    # def canCombine (self, other):
+    #     kSelf = (self.endValue () - self.startValue ()) / self.binWidth ()
+    #     kOther = (other.endValue () - other.startValue ()) / other.binWidth ()
+    #     isKCompatible = abs (kSelf - kOther) <= 0.1
+    #     stepWidthSmaller = min (self._stepWidth, other._stepWidth)
+    #     stepWidthLarger  = max (self._stepWidth, other._stepWidth)
+    #     isCompatibleStepWidth = isMultipleOf (stepWidthLarger, stepWidthSmaller)
 
-        if self.endValue () == other.startValue (): # blocks are adjacent to each other
-            if self._discrete and other._discrete:
-                if isKCompatible and isCompatibleStepWidth:
-                    return True
-                return False
-            elif not self._discrete and not other._discrete: # both are floating blocks
-                if isKCompatible:
-                    return True
-                return False
-        else:
-            if self._discrete and other._discrete: # blocks are not adjacent to each other
-                stepWidthSmaller = min (self._stepWidth, other._stepWidth)
-                stepWidthLarger  = max (self._stepWidth, other._stepWidth)
-                diff = other.startValue () - self.endValue ()
-                if isMultipleOf (stepWidthLarger, diff) and isCompatibleStepWidth:
-                    return True
-                return False
-            else:
-                return False # cannot combine non-adjacent floating blocks
+    #     if self.endValue () == other.startValue (): # blocks are adjacent to each other
+    #         if self._discrete and other._discrete:
+    #             if isKCompatible and isCompatibleStepWidth:
+    #                 return True
+    #             return False
+    #         elif not self._discrete and not other._discrete: # both are floating blocks
+    #             if isKCompatible:
+    #                 return True
+    #             return False
+    #     else:
+    #         if self._discrete and other._discrete: # blocks are not adjacent to each other
+    #             stepWidthSmaller = min (self._stepWidth, other._stepWidth)
+    #             stepWidthLarger  = max (self._stepWidth, other._stepWidth)
+    #             diff = other.startValue () - self.endValue ()
+    #             if isMultipleOf (stepWidthLarger, diff) and isCompatibleStepWidth:
+    #                 return True
+    #             return False
+    #         else:
+    #             return False # cannot combine non-adjacent floating blocks
             
-        return False
+    #     return False
         
 
     def combine (self, other):
@@ -327,17 +300,17 @@ class Block:
         if self.endValue () == other.startValue (): # blocks are adjacent to each other
             if self._discrete and other._discrete:
                 if isKCompatible and isCompatibleStepWidth:
-                    return Block (binWidth = self._binWidth + other._binWidth, startValue = self._startValue, stepWidth = stepWidthSmaller, endValue = other.endValue (), color = self._color)
+                    return Block (binWidth = self._binWidth + other._binWidth, startValue = self._startValue, stepWidth = stepWidthSmaller, endValue = other.endValue (), color = self._color, discrete=True)
                 return None
             elif not self._discrete and not other._discrete: # both are floating blocks
                 if isKCompatible:
-                    return Block (binWidth = self._binWidth + other._binWidth, startValue = self._startValue, stepWidth = stepWidthSmaller, endValue = other.endValue (), color = self._color)
+                    return Block (binWidth = self._binWidth + other._binWidth, startValue = self._startValue, stepWidth = stepWidthSmaller, endValue = other.endValue (), color = self._color, discrete=False)
                 return None
-        else:
-            if self._discrete and other._discrete: # blocks are not adjacent to each other
+        else: # blocks are not adjacent to each other
+            if self._discrete and other._discrete: # blocks describing discrete values
                 diff = other.startValue () - self.endValue ()
                 if isMultipleOf (stepWidthLarger, diff) and isCompatibleStepWidth:
-                    return Block (binWidth = self._binWidth + other._binWidth, startValue = self._startValue, stepWidth = stepWidthSmaller, endValue = other.endValue (), color = self._color)
+                    return Block (binWidth = self._binWidth + other._binWidth, startValue = self._startValue, stepWidth = stepWidthSmaller, endValue = other.endValue (), color = self._color, discrete=True)
                 return None
             else:
                 return None # cannot combine non-adjacent floating blocks
@@ -478,9 +451,14 @@ def combine (blocks):
             combos.append (objBlock)
             break
 
-        if (objNextBlock is not None) and objBlock.canCombine (objNextBlock):
-            objBlock = objBlock.combine (objNextBlock)
-            objNextBlock = None
+        if objNextBlock is not None:
+            combBlock = objBlock.combine (objNextBlock)
+            if combBlock is not None:
+                objBlock = combBlock
+                objNextBlock = None
+            else:
+                combos.append (objBlock)
+                objBlock = objNextBlock
         else:
             combos.append (objBlock)
             objBlock = objNextBlock
