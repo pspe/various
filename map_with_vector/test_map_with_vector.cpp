@@ -235,9 +235,17 @@ public:
         size_t reserve = m_keys.size () + std::distance (first, last);
         m_keys.reserve (reserve);
         m_values.reserver (reserve);
+        // std::for_each (first, last, [&](const typename InputIterator::value_type& val)
+        //                {
+        //                    m_keys.push_back (val.first);
+        //                    m_values.push_back (val.second);
+        //                });
         std::for_each (first, last, [&](const typename InputIterator::value_type& val)
                        {
                            m_keys.push_back (val.first);
+                       });
+        std::for_each (first, last, [&](const typename InputIterator::value_type& val)
+                       {
                            m_values.push_back (val.second);
                        });
         m_isDirty = true;
@@ -251,6 +259,20 @@ public:
         auto dist = std::distance (m_keys.begin (), it);
         return iterator (*this) + dist;
     }
+
+    iterator lower_bound (const key_type& k)
+    {
+        return find (k);
+    }
+
+    iterator upper_bound (const key_type& k)
+    {
+        cleanUp ();
+        auto it = std::upper_bound (m_keys.begin (), m_keys.end (), k);
+        auto dist = std::distance (m_keys.begin (), it);
+        return iterator (*this) + dist;
+    }
+
 
     mapped_type& operator[] (const key_type& key)
     {
@@ -275,6 +297,16 @@ public:
         m_values.erase (m_values.begin () + dist);
         m_isDirty = true;
         return iterator (*this) + dist;
+    }
+    
+    iterator erase (const iterator& first, const iterator& last)
+    {
+        difference_type dist = std::distance (begin (), first);
+        difference_type span = std::distance (first, last);
+        m_keys.erase (m_keys.begin () + dist, m_keys.begin () + dist + span);
+        m_values.erase (m_values.begin () + dist, m_values.begin () + dist + span);
+        m_isDirty = true;
+        return iterator (*this) + dist + span;
     }
     
     
@@ -332,6 +364,7 @@ void probe (map_type& testMap, std::string name, auto keys, auto values, size_t 
 {
     // map_type
     const int width (15);
+    const int precision (6);
     std::cout << std::setw (width) << keys.size () << " : " << std::setw (width) << name << " : " << std::flush;
     high_resolution_clock::time_point startTime = high_resolution_clock::now ();
     auto itValues = begin (values);
@@ -340,6 +373,7 @@ void probe (map_type& testMap, std::string name, auto keys, auto values, size_t 
                   testMap.insert (std::make_pair (key, (*itValues++)));
               });
 
+    high_resolution_clock::time_point findTime = high_resolution_clock::now ();
     size_t currFind = 0;
     for (auto k : keys)
     {
@@ -351,8 +385,9 @@ void probe (map_type& testMap, std::string name, auto keys, auto values, size_t 
             ++currFind;
     }
     high_resolution_clock::time_point endTime   = high_resolution_clock::now ();
-    duration<double> time_span = duration_cast<duration<double>> (endTime-startTime);
-    std::cout << "time = " << time_span.count () << std::setw (width) << "   found = " << std::setw (width) << currFind << std::endl;
+    duration<double> time_span_insert = duration_cast<duration<double>> (findTime-startTime);
+    duration<double> time_span_find = duration_cast<duration<double>> (endTime-findTime);
+    std::cout << "time insert = " << std::fixed << std::setprecision (precision) << time_span_insert.count () << "  time find = " << std::setprecision (precision) << time_span_find.count () << std::setw (width) << "   found = " << std::setw (width) << currFind << std::endl;
 }
 
 
@@ -364,6 +399,7 @@ int main()
     // vecMap.insert (std::make_pair (3, std::string ("hallo")));
     // vecMap.insert (std::make_pair (1, std::string ("test")));
     // vecMap.insert (std::make_pair (4, std::string ("wir")));
+    // vecMap.insert (std::make_pair (3, std::string ("auch")));
 
     // for (auto it = begin (vecMap), itEnd = end (vecMap); it != itEnd; ++it)
     // {
@@ -374,7 +410,7 @@ int main()
     // VecMapType::iterator itFind = vecMap.find (3);
     // std::cout << "found = " << itFind->first << " with value " << itFind->second << std::endl;
 
-    // vecMap.erase (vecMap.begin () + 1);
+    // vecMap.erase (vecMap.lower_bound (3), vecMap.upper_bound (3));
     
     // for (auto it = begin (vecMap), itEnd = end (vecMap); it != itEnd; ++it)
     // {
@@ -393,21 +429,23 @@ int main()
     std::vector<double> times1;
 
     typedef size_t key_type;
-    typedef std::vector<size_t> value_type;
+//    typedef std::vector<size_t> value_type;
+    typedef size_t value_type;
     
-    size_t toFind = 10000;
+    size_t toFind = 1000000000;
     for (auto count : counts)
     {
         std::vector<key_type> keys (count);
         impl_iota (begin (keys), end (keys), 0);
-        std::vector<value_type> values (count, value_type ({2,3}));
-//        impl_iota (begin (values), end (values), 0);
+//        std::vector<value_type> values (count, value_type ({2,3}));
+        std::vector<value_type> values (count);
+        impl_iota (begin (values), end (values), 0);
         
         vector_map<key_type, value_type> testVecMap;
         probe (testVecMap, "vector_map", keys, values, toFind);
 
-        // std::map<key_type, value_type> testMap;
-        // probe (testMap, "std::map", keys, values, toFind);
+        std::map<key_type, value_type> testMap;
+        probe (testMap, "std::map", keys, values, toFind);
 
     }
 
