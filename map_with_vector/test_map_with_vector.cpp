@@ -52,6 +52,8 @@ void impl_iota (ForwardIterator first, ForwardIterator last, T val)
 }
 
 
+
+
 template <class InputIterator1, class InputIterator2, class OutputIterator>
 void set_intersection_retain_duplicates_of_first (InputIterator1 first1, InputIterator1 last1,
                                                   InputIterator2 first2, InputIterator2 last2,
@@ -110,7 +112,7 @@ struct CompareFunctor
 
 // find the sort permutation from the vector of keys
 template <typename T, typename COMPARE>
-std::vector<std::size_t> sort_permutation (const std::vector<T>& vec)
+std::vector<size_t> sort_permutation (const std::vector<T>& vec)
 {
     std::vector<size_t> permutation (vec.size ());
     impl_iota (permutation.begin (), permutation.end (), 0);
@@ -770,6 +772,7 @@ public:
 
     size_t size () const 
     {
+        cleanUp (m_leftPrimaryElements);
         size_t count(0);
         for (typename L_primary_direction_type::const_iterator it = m_leftPrimaryElements.begin(), itEnd = m_leftPrimaryElements.end();
              it != itEnd; ++it)
@@ -1289,7 +1292,7 @@ public:
         // eSide == SIDE::RIGHT
         if (m_orientation == SIDE::RIGHT && !m_isDirty)
             return;
-        cleanUp (m_left, m_right);
+        cleanUp (m_right, m_left);
         m_isDirty = false;
         m_orientation = SIDE::RIGHT;
     }
@@ -1496,13 +1499,21 @@ void probeRelationMatrix (rel_mat& testMatrix, std::string name, auto sources, a
     std::sort (begin (sources), end (sources));
     auto last = std::unique (begin (sources), end (sources));
     sources.erase (last, end (sources));
+    std::sort (begin (sources), end (sources));
 
+    targets.resize (size_t (targets.size () * toKeep));
+    std::sort (begin (targets), end (targets));
+    last = std::unique (begin (targets), end (targets));
+    targets.erase (last, end (targets));
+    std::sort (begin (targets), end (targets));
+    
     // std::cout << std::endl;
     // std::cout << "reduced sources" << std::endl;
     // std::copy (sources.begin(), sources.end(), std::ostream_iterator<size_t>(std::cout, " "));
     // std::cout << std::endl;
     
     testMatrix.keepFromLeft (begin (sources), end (sources));
+    testMatrix.keepFromRight (begin (targets), end (targets));
 
     // resultSources.clear ();
     // resultTargets.clear ();
@@ -1526,6 +1537,25 @@ void probeRelationMatrix (rel_mat& testMatrix, std::string name, auto sources, a
               << " t_find = " << std::setprecision (precision) << time_span_find.count ()  << std::setw (width)
               << " initial = " << std::setw (width) << initialSize << std::setw (width)
               << " kept = " << std::setw (width) << testMatrix.size () << " src size = " << sources.size () << std::endl;
+}
+
+
+
+
+void probeSortPermutation (std::string name, std::vector<size_t> vec)
+{
+    // map_type
+    const int width (12);
+    const int precision (6);
+    std::cout << std::setw (width) << vec.size () << " : " << std::setw (width) << name << " : " << std::flush;
+
+    high_resolution_clock::time_point startTime = high_resolution_clock::now ();
+
+    auto sortedVec = sort_permutation<size_t, std::less<size_t>> (vec);
+    
+    high_resolution_clock::time_point endTime   = high_resolution_clock::now ();
+    duration<double> time_span = duration_cast<duration<double>> (endTime-startTime);
+    std::cout << " t = " << std::setprecision (precision) << time_span.count () << std::endl;
 }
 
 
@@ -1587,11 +1617,11 @@ int main()
 //     return 0;
 
 
-//    std::vector<size_t> counts ({100, 1000, 10000, 100000, 1000000, 10000000});
-//    std::vector<size_t> counts ({100, 1000, 10000, 100000, 1000000});
+  std::vector<size_t> counts ({100, 1000, 10000, 100000, 1000000, 10000000});
+//    std::vector<size_t> counts ({5,10,50,100, 1000, 10000, 100000, 300000});
 //    std::vector<size_t> counts ({10});
 //    std::vector<size_t> counts ({ 10000000});
-    std::vector<size_t> counts ({ 10000});
+//    std::vector<size_t> counts ({ 5,10,20 });
 
     double randFactor = 100.0;
     double toKeep = 0.5;
@@ -1614,10 +1644,11 @@ int main()
         // std::cout << std::endl;
 
         std::cout << std::endl;
-        RelationMatrix<size_t,size_t> relationMatrix;
-        probeRelationMatrix (relationMatrix, "relationMatrix", sources, targets, toKeep);
+        // RelationMatrix<size_t,size_t> relationMatrix;
+        // probeRelationMatrix (relationMatrix, "relationMatrix", sources, targets, toKeep);
         // RelationMatrix2<size_t> relationMatrix2;
         // probeRelationMatrix (relationMatrix2, "relationMatrix2", sources, targets, toKeep);
+        probeSortPermutation ("sort_permutation", sources);
     }
     return 0;
 
