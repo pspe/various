@@ -1481,7 +1481,7 @@ void probeRelationMatrix (rel_mat& testMatrix, std::string name, auto sources, a
     high_resolution_clock::time_point insertTime = high_resolution_clock::now ();
     //testMatrix.cleanUp (RelationMatrix2<size_t>::SIDE::LEFT);
     size_t initialSize = testMatrix.size ();
-    high_resolution_clock::time_point findTime = high_resolution_clock::now ();
+    high_resolution_clock::time_point insertTime_end = high_resolution_clock::now ();
     // size_t currFind = 0;
 
     // decltype (sources) resultSources;
@@ -1507,6 +1507,8 @@ void probeRelationMatrix (rel_mat& testMatrix, std::string name, auto sources, a
     targets.erase (last, end (targets));
     std::sort (begin (targets), end (targets));
     
+    high_resolution_clock::time_point findTime = high_resolution_clock::now ();
+
     // std::cout << std::endl;
     // std::cout << "reduced sources" << std::endl;
     // std::copy (sources.begin(), sources.end(), std::ostream_iterator<size_t>(std::cout, " "));
@@ -1530,11 +1532,11 @@ void probeRelationMatrix (rel_mat& testMatrix, std::string name, auto sources, a
     
     high_resolution_clock::time_point endTime   = high_resolution_clock::now ();
     duration<double> time_span_insert = duration_cast<duration<double>> (insertTime-startTime);
-    duration<double> time_span_clean = duration_cast<duration<double>> (findTime-insertTime);
+    duration<double> time_span_clean = duration_cast<duration<double>> (insertTime_end-insertTime);
     duration<double> time_span_find = duration_cast<duration<double>> (endTime-findTime);
     std::cout << "t_insert = " << std::fixed << std::setprecision (precision) << time_span_insert.count ()
               << " t_clean = " << std::fixed << std::setprecision (precision) << time_span_clean.count ()
-              << " t_find = " << std::setprecision (precision) << time_span_find.count ()  << std::setw (width)
+              << " t_find = " << std::fixed << std::setprecision (precision) << time_span_find.count ()  << std::setw (width)
               << " initial = " << std::setw (width) << initialSize << std::setw (width)
               << " kept = " << std::setw (width) << testMatrix.size () << " src size = " << sources.size () << std::endl;
 }
@@ -1644,11 +1646,11 @@ int main()
         // std::cout << std::endl;
 
         std::cout << std::endl;
-        // RelationMatrix<size_t,size_t> relationMatrix;
-        // probeRelationMatrix (relationMatrix, "relationMatrix", sources, targets, toKeep);
-        // RelationMatrix2<size_t> relationMatrix2;
-        // probeRelationMatrix (relationMatrix2, "relationMatrix2", sources, targets, toKeep);
-        probeSortPermutation ("sort_permutation", sources);
+        RelationMatrix<size_t,size_t> relationMatrix;
+        probeRelationMatrix (relationMatrix, "relationMatrix ", sources, targets, toKeep);
+        RelationMatrix2<size_t> relationMatrix2;
+        probeRelationMatrix (relationMatrix2, "relationMatrix2", sources, targets, toKeep);
+        // probeSortPermutation ("sort_permutation", sources);
     }
     return 0;
 
