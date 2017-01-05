@@ -7,7 +7,22 @@ from matplotlib.patches import Polygon
 from math import *
 from bisect import *
 from copy import *
-import random 
+import matplotlib.mlab as mlab
+import scipy.stats
+import random
+
+# use latex rendering
+from matplotlib import rc
+
+font = {'family':'sans-serif','sans-serif':['Helvetica'], 'size' : 14}
+rc('font',**font)
+## for Palatino and other serif fonts use:
+#rc('font',**{'family':'serif','serif':['Palatino']})
+rc('text', usetex=True)
+
+
+g_size_label = 20
+
 
 def isMultipleOf (larger, smaller):
     if smaller == 0:
@@ -718,13 +733,10 @@ class AdaptiveBinning:
         
 
     
-def draw (data, **kwargs):
+def draw_true_vs_est (vax, data, **kwargs):
     #data [:] = data[::-1]
     maxLen = len(data)
     t = np.arange(0, maxLen, 1)
-
-    fig = plt.figure(figsize=(12, 6))
-    vax = fig.add_subplot(111)
 
     vax.plot(t, data, '-b^')
 #    vax.vlines(t, [0], data, lw = 2, linestyles='dashed')
@@ -810,13 +822,13 @@ def draw (data, **kwargs):
         for i in idx:    
             xInter.append (countEstimation.value (i))
             
-        plt.errorbar (xLow, y, yerr = [0]*len(y), capsize =1, color='r', linestyle = 'dashdot', fmt='o')
-        plt.errorbar (xHigh, y, yerr = [0]*len(y), capsize =1, color='c', linestyle = 'dashdot', fmt='o')
-        plt.errorbar (idx, xInter, yerr = [0]*len(idx), capsize =5, color='k', linestyle = '', fmt='x')
-
+        vax.errorbar (xLow, y, yerr = [0]*len(y), capsize =1, color='r', linestyle = 'dashdot', fmt='o')
+        vax.errorbar (xHigh, y, yerr = [0]*len(y), capsize =1, color='c', linestyle = 'dashdot', fmt='o')
+        vax.errorbar (idx, xInter, yerr = [0]*len(idx), capsize =5, color='k', linestyle = '', fmt='x')
+        
         #print "high ",zip (y,xHigh)
         
-    plt.show()
+#    plt.show()
 
 
 
@@ -904,13 +916,13 @@ def draw2 (data, **kwargs):
 
 
 
-def draw3 (data, **kwargs):
+def draw_differences (vax, data, **kwargs):
     #data [:] = data[::-1]
     maxLen = len(data)
     t = np.arange(0, maxLen, 1)
 
-    fig = plt.figure(figsize=(12, 6))
-    vax = fig.add_subplot(111)
+    #fig = plt.figure(figsize=(12, 6))
+    #vax = fig.add_subplot(111)
 
     
     blocks = list (kwargs.get ('blocks', []))
@@ -951,29 +963,100 @@ def draw3 (data, **kwargs):
     estValues = zip (testData, estBefores) + list (reversed (zip (testData, estAfters)))
 
     
+    
+    
 #    verts = [(1,1),(4,1),(4,3),(2,5)]
 #    verts = np.array ([(1,1),(4,1),(4,3),(2,5)])
+
+    if len (trueValues) > 0:
+        poly = Polygon(trueValues, color='r', alpha=0.2)
+        #    vax.add_patch(poly)
+    if len (estValues) > 0:
+        poly = Polygon(estValues, color='b', alpha=0.2)
+        #    vax.add_patch(poly)
+
+#    vax = fig.add_subplot(111)
+
+    diffBefores = [(est - tr)/total for est,tr in zip (estBefores, trueBefores)]
+    diffEquals = [est - tr for est,tr in zip (estEquals, trueEquals)]
+    diffAfters = [est - tr for est,tr in zip (estAfters, trueAfters)]
     
-    poly = Polygon(trueValues, color='r', alpha=0.2)
-    vax.add_patch(poly)
-    poly = Polygon(estValues, color='b', alpha=0.2)
-    vax.add_patch(poly)
+    vax.plot(testData, diffBefores, '', color = 'r', alpha=0.8)
+    vax.set_xlabel('x')
+    vax.set_ylabel(r'$\displaystyle\frac{C_{\mathrm{est}}^{\mathrm{<}}{(x)} - C_{\mathrm{true}}^{\mathrm{<}}{(x)}}{C_{\mathrm{tot}}}$', fontsize=g_size_label)
+#    vax.set_ylabel(r'\frac{5}{4}') 
+#    vax.set_title('counts')
 
-    vax = fig.add_subplot(111)
 
-    vax.plot(testData, trueBefores, 'x', color = 'r', alpha=0.8)
-    vax.plot(testData, estBefores, '+', color = 'b', alpha=0.8)
+#    vax.plot(testData, diffEquals, '', color = 'g', alpha=0.8)
+#    vax.plot(testData, diffAfters, '', color = 'b', alpha=0.8)
+
+#    vax.plot(testData, trueBefores, '', color = 'r', alpha=0.8)
+#    vax.plot(testData, estBefores, '', color = 'b', alpha=0.8)
+
 #    vax.plot(testData, trueEquals, '-', color = 'r', alpha=0.8)
 #    vax.plot(testData, estEquals, '-', color = 'b', alpha=0.8)
 
-    vax.set_xlabel('x')
-    vax.set_ylabel('count')
-    vax.set_title('counts')
+#    vax.set_xlabel('x')
+#    vax.set_ylabel('count')
+#    vax.set_title('counts')
         
-    plt.show()
+#    plt.show()
 
 
+    
+def draw_histo_pdf  (vax, data, **kwargs):
+    #data [:] = data[::-1]
+    maxLen = len(data)
+    t = np.arange(0, maxLen, 1)
 
+#    fig = plt.figure(figsize=(12, 6))
+#    vax = fig.add_subplot(111)
+
+    
+    blocks = list (kwargs.get ('blocks', []))
+    countEstimation = kwargs.get ('countEstimation', None)
+
+    total = len (data)
+    print "total = ",total
+    num_bins = 50
+    # the histogram of the data
+#    n, bins, patches = vax.hist (data, num_bins, normed=1, facecolor='green', alpha=0.5)
+#    n, bins, patches = vax.hist (data, num_bins, normed=-10.0 ,facecolor='blue', alpha=0.5)
+    hist, bins = np.histogram (data, bins=num_bins, density = True)
+    widths = np.diff (bins)
+    hist *= total 
+    plt.bar (bins[:-1], hist, widths, alpha=0.2)
+    
+
+    # add adaptive binning
+    for block in blocks:
+        length = block.endValue () - block.startValue ()
+
+        if length <= 0:
+            return
+        
+        height = block.binWidth () / length
+        verts = [(block.startValue (),0),(block.endValue (),0),(block.endValue (),height),(block.startValue (),height)]
+
+        alpha = 0.5
+        if block.endValue () - block.startValue () < 1:
+            alpha = 0.8
+        poly = Polygon(verts, color='r', alpha=alpha)
+        vax.add_patch(poly)
+
+
+    # generate a list of kde estimators for each bw
+    kde = scipy.stats.gaussian_kde (data,bw_method=0.05)
+
+    # plot density estimates
+    ext = (data[-1] - data[0])*0.1
+    t_range = np.linspace(data[0]-ext,data[-1]+ext,200)
+    pdf = kde (t_range)
+    pdf = [v* total for v in pdf]
+    vax.plot(t_range,pdf,lw=2, label='pdf', color='blue')
+        
+#    plt.show ()
 
 
 
@@ -1024,7 +1107,13 @@ def testDrawVarying ():
 
     
 #    data = [2,4,6]
-    #data = uni0
+
+    data = np.concatenate ((rnd.triangular (-50,100,150, 1500), rnd.triangular (150,200,280, 1500)), axis = 0)
+    data = range (0, 20, 1) # constant increase
+#    data = [10]*20 # uniform
+
+    #    data = rnd.exponential (200, 3000)
+
 #    data = [d+random.gauss(0,0.1) for d in data]
 
     addData = []
@@ -1051,12 +1140,25 @@ def testDrawVarying ():
     np.sort (data)
 
     blocks = countEstimation._blocks
+
+
+    fig, axs = plt.subplots (2,2, sharex=False, sharey = False)
     
-    draw (data, blocks=blocks, countEstimation = countEstimation)
+    
+#    fig = plt.figure(figsize=(12, 6))
+#    fig = plt.figure(1) #, figsize=(12, 6))
+#    plt.subplot (211)
+#    vax = fig.add_subplot(211)
+    draw_true_vs_est (axs[0,0], data, blocks=blocks, countEstimation = countEstimation)
+    
     #draw2 (data, blocks=blocks, countEstimation = countEstimation)
-    #draw3 (data, blocks=blocks, countEstimation = countEstimation)
+#    fig = plt.figure(2)
+#    vax = fig.add_subplot(212)
+#    plt.subplot (212)
+    draw_differences (axs[0,1], data, blocks=blocks, countEstimation = countEstimation)
+    draw_histo_pdf (axs[1,1], data, blocks=blocks, countEstimation = countEstimation)
 
-
+    plt.show ()
     
 
     
