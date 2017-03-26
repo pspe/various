@@ -1668,7 +1668,13 @@ int main()
         probeRelationMatrix (relationMatrix, "relationMatrix ", sources, targets, toKeep);
         RelationMatrix2<size_t, double> relationMatrix2;
         probeRelationMatrix (relationMatrix2, "relationMatrix2", sources, targets, toKeep);
-        // probeSortPermutation ("sort_permutation", sources);
+
+        // RelationMatrix<double,size_t> relationMatrix;
+        // probeRelationMatrix (relationMatrix, "relationMatrix ", targets, sources, toKeep);
+        // RelationMatrix2<double,size_t> relationMatrix2;
+        // probeRelationMatrix (relationMatrix2, "relationMatrix2", targets, sources, toKeep);
+
+	// probeSortPermutation ("sort_permutation", sources);
     }
     return 0;
 
