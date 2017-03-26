@@ -1,6 +1,6 @@
 
 
-FILES = out.test_negate_sizet out.test_template_default_parameters out.test_iterator_to_const_iterator
+FILES = out.test_template_default_parameters
 
 
 all: $(FILES)

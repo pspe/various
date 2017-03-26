@@ -1,5 +1,8 @@
 
 
+#CC=clang++
+CC=g++
+CFLAGS=-ggdb -O0 -Wall
 FILES = out.test_copy_vector
 
 
@@ -7,11 +10,11 @@ all: $(FILES)
 
 
 out.% : %.cpp
-	g++ -ggdb -O0 -Wall $< -o  $@
+	$(CC) $(CFLAGS) $< -o  $@
 
 
 
 
 coverage : test_transformations.cpp
-	g++ -fprofile-arcs -ftest-coverage -ggdb -O0 -Wall test_transformations.cpp -o out.test_test_transformations
+	$(CC) -fprofile-arcs -ftest-coverage $(CFLAGS) test_transformations.cpp -o out.test_test_transformations
 

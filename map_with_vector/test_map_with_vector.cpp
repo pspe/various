@@ -10,8 +10,9 @@
 #include <iterator>
 #include <memory>
 #include <map>
+#include <random>
 
-#include "valgrind/callgrind.h"
+//#include "valgrind/callgrind.h"
 
 
 using namespace std::chrono;
@@ -23,9 +24,15 @@ using namespace std::chrono;
 template <typename T>
 T randomValue (T minValue, T maxValue)
 {
-    static std::default_random_engine generator;
-    static std::uniform_int_distribution<T> distribution(minValue ,maxValue);
-    return distribution(generator);
+    // static std::default_random_engine generator;
+    // static std::uniform_int_distribution<T> distribution(minValue ,maxValue);
+    // return distribution(generator);
+
+    static std::random_device rd;     // only used once to initialise (seed) engine
+    static std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
+    std::uniform_int_distribution<int> uni(minValue,maxValue); // guaranteed unbiased
+
+    return uni(rng);
 }
 
 
