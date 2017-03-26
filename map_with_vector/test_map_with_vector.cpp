@@ -140,8 +140,8 @@ void sort_permutation_2 (const std::vector<T>& vec, std::vector<size_t>& permuta
 
 
 // find key-value duplicates
-template <typename CONTAINER>
-void remove_key_value_duplicates (CONTAINER& keys, CONTAINER& values)
+template <typename key_container, typename value_container>
+void remove_key_value_duplicates (key_container& keys, value_container& values)
 {
     if (begin (keys) == end (keys) || keys.size () != values.size ())
         return;
@@ -848,12 +848,13 @@ public:
         if (&data != m_isDirtyPtrs[0] && &data != m_isDirtyPtrs[1]) // neither left nor right side are dirty
             return; // get me out from here
 
-        if (!m_leftSideComplete && &data == &m_leftPrimaryElements)
+        if (!m_leftSideComplete && (void*)&data == (void*)&m_leftPrimaryElements)
         {
             cleanUp (m_rightPrimaryElements);
             crossBuild (m_rightPrimaryElements, m_leftPrimaryElements);
         }
-        else if (!m_rightSideComplete && &data == &m_rightPrimaryElements)
+        else if (!m_rightSideComplete &&
+		 (void*)&data == (void*)&m_rightPrimaryElements)
         {
             cleanUp (m_leftPrimaryElements);
             crossBuild (m_leftPrimaryElements, m_rightPrimaryElements);
@@ -1150,7 +1151,8 @@ private:
 
 
 
-template <typename T>
+// template <typename left_type, typename right_type>
+template <typename left_type, typename right_type>
 class RelationMatrix2 
 {
 private:
@@ -1197,14 +1199,6 @@ public:
         return m_left.size ();
     }
 
-    size_t sizeLeft (SIDE eSide) const
-    {
-        cleanUp (eSide);
-        std::vector<T> tmp (eSide == SIDE::LEFT ? m_left : m_right);
-        std::sort (begin (tmp), end (tmp));
-        return std::unique (begin (tmp), end (tmp)) - begin (tmp);
-    }
-
     
     size_t sizeLeft () const
     {
@@ -1216,7 +1210,7 @@ public:
         return size (SIDE::RIGHT);
     }
 
-    void addRelation (T left, T right)
+    void addRelation (left_type left, right_type right)
     {
         m_left. push_back (left );
         m_right.push_back (right);
@@ -1243,13 +1237,15 @@ public:
     //     remove_key_value_duplicates (keys, values);
     // }
 
-    template <typename CONTAINER>
-    void cleanUp (CONTAINER& keys, CONTAINER& values) const
+  template <typename left_container, typename right_container>
+    void cleanUp (left_container& keys, right_container& values) const
     {
         // CALLGRIND_START_INSTRUMENTATION;
         // CALLGRIND_TOGGLE_COLLECT;
 
-        typedef typename CONTAINER::value_type value_type;
+    // typedef typename CONTAINER::value_type value_type;
+
+
         // get the sort permutation from the keys
         // std::vector<size_t> permutation (keys.size ());
         // impl_iota (permutation.begin (), permutation.end (), 0);
@@ -1264,7 +1260,8 @@ public:
         // apply_permutation_in_place (values, permutation);
 
         // permutation = sort_permutation<value_type, std::less<value_type> >  (keys);
-        std::vector<size_t> permutation = sort_permutation<value_type, std::less<value_type> >  (keys);
+      typedef typename left_container::value_type sort_by_type;
+      std::vector<size_t> permutation = sort_permutation<sort_by_type, std::less<sort_by_type> >  (keys);
 
         // apply the sort permutation on keys and values
         keys   = apply_permutation (keys,   permutation);
@@ -1305,20 +1302,34 @@ public:
     }
     
 
-
+  template <typename left_container, typename right_container, typename Iterator>
+  void keepFromSide (left_container& left,
+		     right_container& right,
+		     Iterator first,
+		     Iterator last)
+  {
+        std::vector<size_t> keepIndex;
+	size_t length = std::distance (first, last);
+        keepIndex.reserve (length);
+        set_intersection_retain_duplicates_of_first (begin (left),
+						     end (left),
+						     first,
+						     last,
+						     std::back_inserter (keepIndex));
+        left = apply_permutation (left, keepIndex);
+        right = apply_permutation (right, keepIndex);
+  }
+  
     
     template <typename Iterator>
     void keepFromSide (Iterator first, Iterator last, SIDE eSide)
     {
         assert (std::is_sorted (first, last));
-        std::vector<size_t> keepIndex;
         cleanUp (eSide);
-        auto& left  = eSide == SIDE::LEFT ? m_left : m_right;
-        auto& right = eSide == SIDE::LEFT ? m_right : m_left;
-        keepIndex.reserve (left.size ());
-        set_intersection_retain_duplicates_of_first (begin (left), end (left), first, last, std::back_inserter (keepIndex));
-        left = apply_permutation (left, keepIndex);
-        right = apply_permutation (right, keepIndex);
+	if (eSide == SIDE::LEFT)
+	  keepFromSide (m_left, m_right, first, last);
+	else if (eSide == SIDE::RIGHT)
+	  keepFromSide (m_right, m_left, first, last);
         m_orientation = eSide;
     }
 
@@ -1336,13 +1347,13 @@ public:
     }
 
     template <typename WriteIterator>
-    void getLeft (const IKS::set<T>* indexLeft, const IKS::set<T>* indexRight, WriteIterator writeIterator) const
+    void getLeft (const IKS::set<left_type>* indexLeft, const IKS::set<left_type>* indexRight, WriteIterator writeIterator) const
     {
         getVector (SIDE::LEFT, indexLeft, indexRight, writeIterator);
     }
 
     template <typename WriteIterator>
-    void getRight (const IKS::set<T>* indexLeft, const IKS::set<T>* indexRight, WriteIterator writeIterator) const
+    void getRight (const IKS::set<right_type>* indexLeft, const IKS::set<right_type>* indexRight, WriteIterator writeIterator) const
     {
         getVector (SIDE::RIGHT, indexLeft, indexRight, writeIterator);
     }
@@ -1353,9 +1364,9 @@ public:
         getMatrixFiltered (NULL, NULL, writeLeft, writeRight);
     }
 
-    template <typename WriteIterator>
-    void getMatrixFiltered (const IKS::set<T>* indexOnLeft, const IKS::set<T>* indexOnRight, 
-                            WriteIterator writeLeft, WriteIterator writeRight) const
+  template <typename iterator_write_left, typename iterator_write_right>
+    void getMatrixFiltered (const IKS::set<left_type>* indexOnLeft, const IKS::set<right_type>* indexOnRight, 
+                            iterator_write_left writeLeft, iterator_write_right writeRight) const
     {
         if (!indexOnLeft && !indexOnRight)
         {
@@ -1380,10 +1391,10 @@ private:
 
 
 
-    template <typename WriteIterator>
+  template <typename WriteIterator>
     void getVector (SIDE eSide, 
-                    const IKS::set<T>* leftIndex, 
-                    const IKS::set<T>* rightIndex, 
+                    const IKS::set<left_type>* leftIndex, 
+                    const IKS::set<right_type>* rightIndex, 
                     WriteIterator writeIterator) const
     {
         if (!leftIndex && !rightIndex)
@@ -1425,8 +1436,8 @@ private:
     mutable SIDE m_orientation;
     mutable bool m_isDirty;
 
-    mutable std::vector<T> m_left;
-    mutable std::vector<T> m_right;
+    mutable std::vector<left_type> m_left;
+    mutable std::vector<right_type> m_right;
 };
 
 
@@ -1504,14 +1515,14 @@ void probeRelationMatrix (rel_mat& testMatrix, std::string name, auto sources, a
 
     sources.resize (size_t (sources.size () * toKeep));
     std::sort (begin (sources), end (sources));
-    auto last = std::unique (begin (sources), end (sources));
-    sources.erase (last, end (sources));
+    auto lastSrc = std::unique (begin (sources), end (sources));
+    sources.erase (lastSrc, end (sources));
     std::sort (begin (sources), end (sources));
 
     targets.resize (size_t (targets.size () * toKeep));
     std::sort (begin (targets), end (targets));
-    last = std::unique (begin (targets), end (targets));
-    targets.erase (last, end (targets));
+    auto lastTgt = std::unique (begin (targets), end (targets));
+    targets.erase (lastTgt, end (targets));
     std::sort (begin (targets), end (targets));
     
     high_resolution_clock::time_point findTime = high_resolution_clock::now ();
@@ -1550,8 +1561,8 @@ void probeRelationMatrix (rel_mat& testMatrix, std::string name, auto sources, a
 
 
 
-
-void probeSortPermutation (std::string name, std::vector<size_t> vec)
+template <typename T>
+void probeSortPermutation (std::string name, std::vector<T> vec)
 {
     // map_type
     const int width (12);
@@ -1641,7 +1652,7 @@ int main()
         std::vector<size_t> sources (count, 0);
         uniform (sources, size_t(0), maxRand0);
 
-        std::vector<size_t> targets (count, 0);
+        std::vector<double> targets (count, 0);
         uniform (targets, maxRand0, maxRand1);
 
         // sources = {0,0,0,0,1,1,1,2,2,2,4,2,5,1,2};
@@ -1653,9 +1664,9 @@ int main()
         // std::cout << std::endl;
 
         std::cout << std::endl;
-        RelationMatrix<size_t,size_t> relationMatrix;
+        RelationMatrix<size_t,double> relationMatrix;
         probeRelationMatrix (relationMatrix, "relationMatrix ", sources, targets, toKeep);
-        RelationMatrix2<size_t> relationMatrix2;
+        RelationMatrix2<size_t, double> relationMatrix2;
         probeRelationMatrix (relationMatrix2, "relationMatrix2", sources, targets, toKeep);
         // probeSortPermutation ("sort_permutation", sources);
     }
