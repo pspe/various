@@ -263,7 +263,6 @@ void apply_permutation_in_place (std::vector<T>& vec, const std::vector<std::siz
 
 
 
-enum class SIDE { LEFT, RIGHT };
 
 
 
@@ -272,10 +271,9 @@ enum class SIDE { LEFT, RIGHT };
 template <typename left_type, typename right_type, typename left_comparison_type = std::less<left_type>, typename right_comparison_type = std::less<right_type> >
 class RelationMatrix2 
 {
-private:
-
-    
 public:
+
+    enum class SIDE { LEFT, RIGHT };
 
 
     RelationMatrix2 ()
