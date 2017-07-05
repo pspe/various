@@ -269,7 +269,7 @@ enum class SIDE { LEFT, RIGHT };
 
 
 // template <typename left_type, typename right_type>
-template <typename left_type, typename right_type, typename left_comparison_type = std::less<>, typename right_comparison_type = std::less<> >
+template <typename left_type, typename right_type, typename left_comparison_type = std::less<left_type>, typename right_comparison_type = std::less<right_type> >
 class RelationMatrix2 
 {
 private:
