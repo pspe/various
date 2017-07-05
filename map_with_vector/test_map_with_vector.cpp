@@ -460,7 +460,7 @@ void probeSortPermutation (std::string name, std::vector<T> vec)
 	    return *this;
 	}
 	bool operator== (const AA& other) { return vX == other.vX; }
-	bool operator<  (const AA& other) { return vX < other.vX; }
+	// bool operator<  (const AA& other) { return vX < other.vX; }
 	int vX;
     };
 
@@ -475,7 +475,7 @@ void probeSortPermutation (std::string name, std::vector<T> vec)
 	    return *this;
 	}
 	bool operator== (const BB& other) { return vY == other.vY; }
-	bool operator<  (const BB& other) { return vY < other.vY; }
+	// bool operator<  (const BB& other) { return vY < other.vY; }
 	int vY;
     };
 
@@ -521,10 +521,10 @@ void test_different_types ()
     relMat.addRelation (AA(6), BB(2));
 
     
-    IKS::set<AA> leftIdx;
+    IKS::set<AA, Comparison<AA> > leftIdx;
     leftIdx.insert (AA(8));
     leftIdx.insert (AA(10));
-    IKS::set<BB> rightIdx;
+    IKS::set<BB, Comparison<BB> > rightIdx;
     rightIdx.insert (BB(3));
     rightIdx.insert (BB(6));
 		     

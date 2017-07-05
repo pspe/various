@@ -265,44 +265,6 @@ void apply_permutation_in_place (std::vector<T>& vec, const std::vector<std::siz
 
 enum class SIDE { LEFT, RIGHT };
 
-// template <SIDE Side>
-// struct Other
-// {
-//     static const SIDE side = LEFT;
-// };
-
-// template <>
-// struct Other<LEFT>
-// {
-//     static const SIDE side = RIGHT;
-// };
-
-
-
-// template <SIDE Side>
-// struct Select
-// {
-// };
-
-
-// template <>
-// struct Select<LEFT>
-// {
-//     template <typename LEFT, typename RIGHT>
-//     LEFT& left (LEFT& left, RIGHT& right) const { return left; }
-//     template <typename LEFT, typename RIGHT>
-//     RIGHT& right (LEFT& left, RIGHT& right) const { return right; }
-// };
-
-// template <>
-// struct Select<RIGHT>
-// {
-//     template <typename LEFT, typename RIGHT>
-//     RIGHT& left (LEFT& left, RIGHT& right) const { return right; }
-//     template <typename LEFT, typename RIGHT>
-//     LEFT& right (LEFT& left, RIGHT& right) const { return left; }
-// };
-
 
 
 
@@ -444,7 +406,6 @@ public:
             m_orientation = SIDE::LEFT;
             return;
         }
-        // eSide == SIDE::RIGHT
         if (m_orientation == SIDE::RIGHT && !m_isDirty)
             return;
         cleanUp<right_comparison_type, left_comparison_type> (m_right, m_left);
@@ -489,7 +450,6 @@ public:
     template <typename Iterator>
     void keepFromLeft (Iterator first, Iterator last)
     {
-        // keepFromSide<SIDE::LEFT> (first, last);
         assert (std::is_sorted (first, last, left_comparison_type ()));
         cleanUp (SIDE::LEFT);
 
@@ -509,7 +469,6 @@ public:
     template <typename Iterator>
     void keepFromRight (Iterator first, Iterator last)
     {
-        // keepFromSide<SIDE::RIGHT> (first, last);
         assert (std::is_sorted (first, last, right_comparison_type ()));
         cleanUp (SIDE::RIGHT);
 
@@ -526,14 +485,9 @@ public:
         m_left = apply_permutation (m_left, keepIndex);
     }
 
-    template <typename WriteIterator>
-    void getLeft (const IKS::set<left_type>* leftIndex, const IKS::set<right_type>* rightIndex, WriteIterator writeIterator) const
+    template <typename left_index_type, typename right_index_type, typename WriteIterator>
+    void getLeft (const left_index_type* leftIndex, const right_index_type* rightIndex, WriteIterator writeIterator) const
     {
-        // getVector<SIDE::LEFT> (indexLeft, indexRight, writeIterator);
-
-
-	// if no indices are provided
-	// Select<eSide> select;
         if (!leftIndex && !rightIndex)
         {
             cleanUp (SIDE::LEFT);
@@ -542,8 +496,6 @@ public:
         }
 
         auto sub (*this);
-        // if (eSide == SIDE::LEFT)
-        // {
 	if (rightIndex)
 	    sub.keepFromRight (std::begin (*rightIndex), std::end (*rightIndex));
 	if (leftIndex)
@@ -551,26 +503,11 @@ public:
 	if (sub.m_orientation != SIDE::LEFT)
 	    sub.cleanUp (SIDE::LEFT);
 	std::unique_copy (std::begin (sub.m_left), std::end (sub.m_left), writeIterator);
-	// return;
-        // }
-        // // eSide == SIDE::RIGHT
-        // if (leftIndex)
-        //     sub.keepFromLeft  (std::begin (*leftIndex),  std::end (*leftIndex));
-        // if (rightIndex)
-        //     sub.keepFromRight (std::begin (*rightIndex), std::end (*rightIndex));
-        // if (sub.m_orientation != SIDE::RIGHT)
-        //     sub.cleanUp (SIDE::RIGHT);
-        // std::unique_copy (std::begin (sub.m_right), std::end (sub.m_right), writeIterator);
-	
     }
 
-    template <typename WriteIterator>
-    void getRight (const IKS::set<left_type>* leftIndex, const IKS::set<right_type>* rightIndex, WriteIterator writeIterator) const
+    template <typename left_index_type, typename right_index_type, typename WriteIterator>
+    void getRight (const left_index_type* leftIndex, const right_index_type* rightIndex, WriteIterator writeIterator) const
     {
-        // getVector<SIDE::RIGHT> (indexLeft, indexRight, writeIterator);
-
-	// if no indices are provided
-	// Select<eSide> select;
         if (!leftIndex && !rightIndex)
         {
             cleanUp (SIDE::RIGHT);
@@ -579,18 +516,6 @@ public:
         }
 
         auto sub (*this);
-        // if (eSide == SIDE::LEFT)
-        // {
-        //     if (rightIndex)
-        //         sub.keepFromRight (std::begin (*rightIndex), std::end (*rightIndex));
-        //     if (leftIndex)
-        //         sub.keepFromLeft  (std::begin (*leftIndex),  std::end (*leftIndex));
-        //     if (sub.m_orientation != SIDE::LEFT)
-        //         sub.cleanUp (SIDE::LEFT);
-        //     std::unique_copy (std::begin (sub.m_left), std::end (sub.m_left), writeIterator);
-        //     return;
-        // }
-        // eSide == SIDE::RIGHT
         if (leftIndex)
             sub.keepFromLeft  (std::begin (*leftIndex),  std::end (*leftIndex));
         if (rightIndex)
@@ -632,102 +557,10 @@ public:
 
 private:
 
-
-    template <SIDE eSide, typename Iterator, typename OutIterator>
-    void copy_unique (Iterator first, Iterator last, OutIterator to) const
-    {
-	std::unique_copy (first, last, to);
-    }
-    
-
-
-    
-    
-    
-    // template <SIDE eSide, typename WriteIterator>
-    // void getVector (const IKS::set<left_type>* leftIndex, 
-    //                 const IKS::set<right_type>* rightIndex, 
-    //                 WriteIterator writeIterator) const
-    // {
-    // 	// if no indices are provided
-    // 	Select<eSide> select;
-    //     if (!leftIndex && !rightIndex)
-    //     {
-    //         cleanUp (eSide);
-    // 	    std::unique_copy (std::begin (select.left (m_left, m_right)), std::end (select.left (m_left, m_right)), writeIterator);
-    //         return;
-    //     }
-
-    //     auto sub (*this);
-    //     if (eSide == SIDE::LEFT)
-    //     {
-    //         if (rightIndex)
-    //             sub.keepFromRight (std::begin (*rightIndex), std::end (*rightIndex));
-    //         if (leftIndex)
-    //             sub.keepFromLeft  (std::begin (*leftIndex),  std::end (*leftIndex));
-    //         if (sub.m_orientation != SIDE::LEFT)
-    //             sub.cleanUp (SIDE::LEFT);
-    //         std::unique_copy (std::begin (sub.m_left), std::end (sub.m_left), writeIterator);
-    //         return;
-    //     }
-    //     // eSide == SIDE::RIGHT
-    //     if (leftIndex)
-    //         sub.keepFromLeft  (std::begin (*leftIndex),  std::end (*leftIndex));
-    //     if (rightIndex)
-    //         sub.keepFromRight (std::begin (*rightIndex), std::end (*rightIndex));
-    //     if (sub.m_orientation != SIDE::RIGHT)
-    //         sub.cleanUp (SIDE::RIGHT);
-    //     std::unique_copy (std::begin (sub.m_right), std::end (sub.m_right), writeIterator);
-    // }
-
-
-
-private:
-
     mutable SIDE m_orientation;
     mutable bool m_isDirty;
 
     mutable std::vector<left_type> m_left;
     mutable std::vector<right_type> m_right;
 };
-
-
-
-// template <typename left_type, typename right_type, typename left_comparison_type = std::less<>, typename right_comparison_type = std::less<> >
-// template <SIDE eSide, typename WriteIterator>
-// void RelationMatrix2<left_type,right_type,left_comparison_type, right_comparision_type>::getVector (
-//     const IKS::set<left_type>* leftIndex, 
-//     const IKS::set<right_type>* rightIndex, 
-//     WriteIterator writeIterator) const
-// {
-//     // if no indices are provided
-//     Select<eSide> select;
-//     if (!leftIndex && !rightIndex)
-//     {
-// 	cleanUp (eSide);
-// 	std::unique_copy (std::begin (select.left (m_left, m_right)), std::end (select.left (m_left, m_right)), writeIterator);
-// 	return;
-//     }
-
-//     auto sub (*this);
-//     if (eSide == SIDE::LEFT)
-//     {
-// 	if (rightIndex)
-// 	    sub.keepFromRight (std::begin (*rightIndex), std::end (*rightIndex));
-// 	if (leftIndex)
-// 	    sub.keepFromLeft  (std::begin (*leftIndex),  std::end (*leftIndex));
-// 	if (sub.m_orientation != SIDE::LEFT)
-// 	    sub.cleanUp (SIDE::LEFT);
-// 	std::unique_copy (std::begin (sub.m_left), std::end (sub.m_left), writeIterator);
-// 	return;
-//     }
-//     // eSide == SIDE::RIGHT
-//     if (leftIndex)
-// 	sub.keepFromLeft  (std::begin (*leftIndex),  std::end (*leftIndex));
-//     if (rightIndex)
-// 	sub.keepFromRight (std::begin (*rightIndex), std::end (*rightIndex));
-//     if (sub.m_orientation != SIDE::RIGHT)
-// 	sub.cleanUp (SIDE::RIGHT);
-//     std::unique_copy (std::begin (sub.m_right), std::end (sub.m_right), writeIterator);
-// }
 

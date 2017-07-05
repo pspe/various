@@ -55,7 +55,7 @@ namespace IKS
     // only for large n with a very large quantity of duplicates, 
     // the std::set performs slightly better.
 
-    template <typename T>
+    template <typename T, typename comparison_type = std::less<T> >
     class set
     {
     public:
@@ -123,7 +123,7 @@ namespace IKS
         { 
             if (!m_isDirty)
                 return;
-            std::sort (m_data.begin (), m_data.end ());
+            std::sort (m_data.begin (), m_data.end (), comparison_type ());
             m_data.erase (std::unique (m_data.begin (), m_data.end ()), m_data.end ());
             m_isDirty = false;
         }
