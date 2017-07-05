@@ -273,6 +273,18 @@ class RelationMatrix2
 {
 public:
 
+    typedef RelationMatrix2<left_type,right_type, left_comparison_type, right_comparison_type> matrix_type;
+
+    typedef std::vector<left_type> left_container_type;
+    typedef std::vector<right_type> right_container_type;
+
+    typedef typename left_container_type::iterator left_iterator;
+    typedef typename left_container_type::const_iterator const_left_iterator;
+
+    typedef typename right_container_type::iterator right_iterator;
+    typedef typename right_container_type::const_iterator const_right_iterator;
+
+    
     enum class SIDE { LEFT, RIGHT };
 
 
@@ -558,7 +570,7 @@ private:
     mutable SIDE m_orientation;
     mutable bool m_isDirty;
 
-    mutable std::vector<left_type> m_left;
-    mutable std::vector<right_type> m_right;
+    mutable left_container_type m_left;
+    mutable right_container_type m_right;
 };
 
