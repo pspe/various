@@ -9,6 +9,7 @@ import sys
 import cPickle as pickle
 import getopt
 import math
+import glob
 
 baseFiles = ""
 baseFilesList = []
@@ -39,9 +40,13 @@ Options:
   -l, --libs      show the dependencies for the libs provided here
   -f, --file      filename for the .dot output file which contains the graph information in the DOT format
 """
+        exit ()
     elif opt in ('-c', '--create'):
         createNew = True
     elif opt in ('-l', '--libs'):
+        #if arg[0] == '/' or arg[0] == '~':
+        #else:
+        #    baseFiles.append (glob.glob (os.getcwd()+"/"+arg))
         baseFiles += arg+" "
         baseFiles = re.sub (' +',' ',baseFiles)
         baseFilesList.append (arg)
@@ -255,8 +260,11 @@ if createNew or not data:
 
 diagram = "digraph Dependencies {\n"
 for lib in linkage:
-    if len(baseFilesList) > 0 and lib not in baseFilesList:
-        continue
+#    if len(baseFilesList) > 0 and lib not in baseFilesList:
+#        diagram += "-->cont-->"
+#        diagram += "len:"+str(len(baseFilesList))+"  "
+#        diagram += "in:"+str(lib in baseFilesList)+"  "
+#        continue
     for refLib in linkage[lib]:
         depSyms = False
         syms = []
