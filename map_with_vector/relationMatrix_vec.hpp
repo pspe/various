@@ -24,40 +24,6 @@ void impl_iota (ForwardIterator first, ForwardIterator last, T val)
 
 
 
-template <typename Comparison, class InputIterator1, class InputIterator2, class OutputIterator>
-void set_intersection_retain_duplicates_of_first (InputIterator1 first1, InputIterator1 last1,
-                                                  InputIterator2 first2, InputIterator2 last2,
-                                                  OutputIterator keepIndex)
-{
-    size_t idx (0);
-    while (first1!=last1 && first2!=last2)
-    {
-        if (Comparison () (*first1,*first2))
-        {
-            ++first1;
-            ++idx;
-        }
-        else if (Comparison () (*first2,*first1))
-        {
-            ++first2;
-        }
-        else
-        {
-            const auto& val = *first1;
-            auto first1Upper = std::upper_bound (first1, last1, val, Comparison ());
-            while (first1 != first1Upper)
-            {
-                *keepIndex = idx;
-                ++keepIndex;
-                ++first1;
-                ++idx;
-            }
-            
-            ++first2;
-        }
-    }
-}
-
 
 
 template <typename CONTAINER, typename COMPARE>
@@ -70,6 +36,21 @@ struct CompareFunctor
     {
     }
     
+            CompareFunctor (const CompareFunctor& other)
+                : compare (other.compare)
+                , container (other.container)
+
+            {
+            }
+
+            CompareFunctor& operator= (const CompareFunctor& other)
+            {
+                this->~CompareFunctor ();
+                new (this) CompareFunctor (other);
+                return *this;
+            }
+
+
     template <typename T>
     bool operator() (const T& lhs, const T& rhs) const
     {
@@ -81,6 +62,17 @@ struct CompareFunctor
 };
 
 
+
+//        template <class ForwardIterator, class T>
+//        void impl_iota (ForwardIterator first, ForwardIterator last, T val)
+//        {
+//            while (first!=last)
+//            {
+//                *first = val;
+//                ++first;
+//                ++val;
+//            }
+//        }
 
 // find the sort permutation from the vector of keys
 template <typename T, typename COMPARE>
@@ -219,6 +211,43 @@ std::vector<T> apply_permutation(const std::vector<T>& vec, const std::vector<st
 }
 
 
+
+template <typename Comparison, class InputIterator1, class InputIterator2, class OutputIterator>
+void set_intersection_retain_duplicates_of_first (InputIterator1 first1, InputIterator1 last1,
+                                                  InputIterator2 first2, InputIterator2 last2,
+                                                  OutputIterator keepIndex)
+{
+    size_t idx (0);
+    while (first1!=last1 && first2!=last2)
+    {
+        if (Comparison () (*first1,*first2))
+        {
+            ++first1;
+            ++idx;
+        }
+        else if (Comparison () (*first2,*first1))
+        {
+            ++first2;
+        }
+        else
+        {
+            const auto& val = *first1;
+            auto first1Upper = std::upper_bound (first1, last1, val, Comparison ());
+            while (first1 != first1Upper)
+            {
+                *keepIndex = idx;
+                ++keepIndex;
+                ++first1;
+                ++idx;
+            }
+            
+            ++first2;
+        }
+    }
+}
+
+
+
 template <typename T>
 void apply_permutation(std::vector<T>& vec0, std::vector<T>& vec1, const std::vector<std::size_t>& p)
 {
@@ -308,6 +337,7 @@ public:
         m_left = other.m_left;
         m_right = other.m_right;
         m_orientation = other.m_orientation;
+        return *this;
     }
         
 
@@ -425,7 +455,8 @@ public:
     
 
     template <typename Comparison, typename left_container, typename right_container, typename Iterator>
-    void keepFromSide (left_container& left,
+    void keepFromSide (
+               left_container& left,
 		       right_container& right,
 		       Iterator first,
 		       Iterator last)
@@ -483,7 +514,7 @@ public:
         cleanUp (SIDE::RIGHT);
 
         std::vector<size_t> keepIndex;
-	size_t length = std::distance (first, last);
+	    size_t length = std::distance (first, last);
         keepIndex.reserve (length);
         set_intersection_retain_duplicates_of_first<right_comparison_type> (
 	    begin (m_right),
@@ -501,18 +532,18 @@ public:
         if (!leftIndex && !rightIndex)
         {
             cleanUp (SIDE::LEFT);
-	    std::unique_copy (std::begin (m_left), std::end (m_left), writeIterator);
+	        std::unique_copy (std::begin (m_left), std::end (m_left), writeIterator);
             return;
         }
 
         auto sub (*this);
-	if (rightIndex)
-	    sub.keepFromRight (std::begin (*rightIndex), std::end (*rightIndex));
-	if (leftIndex)
-	    sub.keepFromLeft  (std::begin (*leftIndex),  std::end (*leftIndex));
-	if (sub.m_orientation != SIDE::LEFT)
-	    sub.cleanUp (SIDE::LEFT);
-	std::unique_copy (std::begin (sub.m_left), std::end (sub.m_left), writeIterator);
+        if (rightIndex)
+            sub.keepFromRight (std::begin (*rightIndex), std::end (*rightIndex));
+        if (leftIndex)
+            sub.keepFromLeft  (std::begin (*leftIndex),  std::end (*leftIndex));
+        if (sub.m_orientation != SIDE::LEFT)
+            sub.cleanUp (SIDE::LEFT);
+        std::unique_copy (std::begin (sub.m_left), std::end (sub.m_left), writeIterator);
     }
 
     template <typename left_index_type, typename right_index_type, typename WriteIterator>
@@ -521,7 +552,7 @@ public:
         if (!leftIndex && !rightIndex)
         {
             cleanUp (SIDE::RIGHT);
-	    std::unique_copy (std::begin (m_right), std::end (m_right), writeIterator);
+            std::unique_copy (std::begin (m_right), std::end (m_right), writeIterator);
             return;
         }
 
@@ -561,9 +592,76 @@ public:
             sub.keepFromLeft  (begin (*indexOnLeft),  end (*indexOnLeft));
         if (sub.m_orientation != SIDE::LEFT)
             sub.cleanUp (SIDE::LEFT);
-        std::unique_copy (begin (sub.m_left),  end (sub.m_left),  writeLeft);
-        std::unique_copy (begin (sub.m_right), end (sub.m_right), writeRight);
+        std::copy (begin (sub.m_left),  end (sub.m_left),  writeLeft);
+        std::copy (begin (sub.m_right), end (sub.m_right), writeRight);
     }
+
+
+            template <typename MATRIX>
+            RelationMatrix2<left_type, typename MATRIX::right_type, left_comparison_type, typename MATRIX::right_comparison_type> join (const MATRIX& other) const
+            {
+                typedef RelationMatrix2<left_type, typename MATRIX::right_type, left_comparison_type, typename MATRIX::right_comparison_type> join_matrix_type;
+                matrix_type firstMatrix (*this);
+                firstMatrix.cleanUp (SIDE::RIGHT); // sort by right side
+                MATRIX secondMatrix (other);
+                secondMatrix.cleanUp (SIDE::LEFT); // sort by left side
+
+                join_matrix_type joinMatrix;
+
+                typedef typename right_container_type::iterator iterator;
+
+                typedef right_type value_type;
+                typedef right_comparison_type comparison_type;
+
+                size_t firstIdx (0);
+                size_t secondIdx (0);
+
+                iterator firstBegin = firstMatrix.m_right.begin ();
+                iterator first = firstMatrix.m_right.begin ();
+                iterator firstEnd = firstMatrix.m_right.end ();
+                iterator secondBegin = firstMatrix.m_right.begin ();
+                iterator second = secondMatrix.m_left.begin ();
+                iterator secondEnd = secondMatrix.m_left.end ();
+
+                while (first != firstEnd && second != secondEnd)
+                {
+                    if (comparison_type ()(*first, *second))
+                    {
+                        ++first;
+                        ++firstIdx;
+                    }
+                    else if (comparison_type ()(*second, *first))
+                    {
+                        ++second;
+                        ++secondIdx;
+                    }
+                    else
+                    {
+                        const value_type& val = *first;
+                        iterator firstUpper = std::upper_bound (first, firstEnd, val, comparison_type ());
+                        iterator secondUpper = std::upper_bound (first, firstEnd, val, comparison_type ());
+
+                        size_t firstIdxUpper= std::distance (firstBegin, firstUpper);
+                        size_t secondIdxUpper = std::distance (secondBegin, secondUpper);
+
+                        // cross-product of all entries in that range
+                        for (;firstIdx < firstIdxUpper; ++firstIdx)
+                        {
+                            for (;secondIdx < secondIdxUpper; ++secondIdx)
+                            {
+                                joinMatrix.addRelation (firstMatrix.m_left.at (firstIdx), secondMatrix.m_right.at (secondIdx));
+                            }
+                        }
+
+                        first = firstUpper;
+                        second = secondUpper;
+                    }
+                }
+
+                return joinMatrix;
+            }
+
+
 
 private:
 
@@ -573,4 +671,3 @@ private:
     mutable left_container_type m_left;
     mutable right_container_type m_right;
 };
-
