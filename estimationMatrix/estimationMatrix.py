@@ -868,7 +868,7 @@ def testDraw ():
     
     data = np.sort (data)
     data = np.ceil (data, None)
-    blocks = bucket (data, limit=0.1, depth=10, individualSigma = 2.0, maxExtremas=10)
+    blocks = bucket (data, limit=0.1, depth=10, individualSigma = 2.0, maxExtremas=50)
     draw (data, blocks=blocks)
     
 
