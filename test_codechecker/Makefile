@@ -5,7 +5,8 @@ CC=g++
 CFLAGS=-Wall -Wno-attributes -std=c++11 -O0 -ggdb -flto -Iinc
 #CFLAGS=-Wall -O0
 LDFLAGS=-ggdb
-SOURCES=test_codechecker.cpp
+#SOURCES=test_codechecker.cpp
+SOURCES=test_small.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=runTest
 LIBS = -lstdc++ -lm
