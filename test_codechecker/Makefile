@@ -29,4 +29,4 @@ datetest:
 	$(CC) $(CFLAGS) -c $< -o $@ 
 
 clean:
-	rm *.o $(EXECUTABLE) "*~"
+	rm -f *.o $(EXECUTABLE) "*~"
