@@ -7,6 +7,7 @@
 //#include <set>
 //#include <chrono>
 #include <cassert>
+#include "simple.hpp"
 
 
 
@@ -39,26 +40,6 @@ int* const MyNullPointer = NULL;
 
 #define TEST2_CRASH(err) *MyNullPointer = err;
 
-
-class A
-{
-public:
-private:
-    virtual ~A () {} // private destructor
-};
-
-class B
-{
-public:
-    virtual ~B () {} // public destructor
-private:
-};
-
-
-void test_privatePublicDestructor ()
-{
-    B b;
-}
 
 
 
@@ -142,10 +123,6 @@ int testDivByZero (int length)
 
 int main()
 {
-    {
-	test_privatePublicDestructor ();
-    }
-    
 
     {
         size_t val = 123;
@@ -251,10 +228,13 @@ int main()
     }
 
     {
-	double value (3.7);
-	unsigned char R=((unsigned char)(value+0.5));
+        int x;
+        x |= 2; // NOLINT // warn: left expression is unitialized
     }
 
+    {
+      int v (getValue ());
+    }
     
 }
 
