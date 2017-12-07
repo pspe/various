@@ -19,11 +19,10 @@ T randomValue (T minValue, T maxValue)
 }
 
 
-template <typename Container, typename T>
-auto uniform (Container& container, T minValue, T maxValue)
+auto uniform (auto minValue, auto maxValue)
 {
     return
-	[&](auto& container)
+	[minValue, maxValue](auto& container)
             {
 	       std::for_each (begin (container), end (container), [&](auto& v)
 		       {
@@ -35,7 +34,7 @@ auto uniform (Container& container, T minValue, T maxValue)
 
 void initialize (auto& values, auto from, auto to)
 {
-    std::for_each (begin (values), end (values), uniform (values, from, to));
+    std::for_each (begin (values), end (values), uniform (from, to));
 }
 
 
@@ -112,35 +111,13 @@ void uniquify_permutation (const Container& container, std::vector<size_t>& perm
 }
 
 
-
-// uniquify the permutation
-template <typename Container>
-void difference_permutation (const Container& contA,
-			     std::vector<size_t>& permA,
-			     const Container& contB,
-			     std::vector<size_t>& permb)
-{
-    auto itEnd = std::unique (permutation.begin (), permutation.end (), [&container](auto rowLhs, auto rowRhs)
-	       {
-		   for (auto it = begin (container), itEnd = end (container); it != itEnd; ++it)
-		   {
-		       const auto& column = *it;
-		       if (column.at (rowLhs) != column.at (rowRhs))
-			   return false;
-		   }
-		   return true;
-	       });
-    permutation.resize (std::distance (begin (permutation), itEnd));
-}
-
-
-
 template <typename Sortee, typename Permutation>
 Sortee apply_permutation(const Sortee& vec, const Permutation& p)
 {
-    Sortee sorted_vec (p.size());
+    Sortee sorted_vec;
+    sorted_vec.reserve (p.size ());
     
-    std::transform (p.begin(), p.end(), sorted_vec.begin(), [&](std::size_t i)
+    std::transform (p.begin(), p.end(), std::inserter (sorted_vec, sorted_vec.end ()), [&](std::size_t i)
                     {
                         return vec[i];
                     });
@@ -156,39 +133,122 @@ Sortee apply_permutation(const Sortee& vec, const Permutation& p)
 }
 
 
+template <typename Container>
+Container apply (const Container& values, const auto& permutation)
+{
+    Container result;
+    std::transform (begin (values), end (values), std::inserter (result, result.end ()), [&permutation](const auto& col)
+		   {
+		       return apply_permutation (col, permutation);
+		   });
+    return result;
+}    
+
+
+
+void print (const auto& name, const auto& values)
+{
+    std::cout << name << std::endl; std::copy (begin (values), end (values), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
+}
+
+
+// uniquify the permutation
+template <typename Container>
+Container difference_permutation (const Container& contPlus, const Container& contMinus)
+{
+    // distinguish  between the indices (permutations) for contPlus from those for contMinus
+    // by their values. From 0 to limitPlus --> contPlus, from limitPlus+1 to end for contMinus
+    
+    std::vector<size_t> permPlus (contPlus.at (0).size (), 0);
+    impl_iota (begin (permPlus), end (permPlus), 0);
+    std::vector<size_t> permMinus (contMinus.at (0).size (), 0);
+
+    size_t limitPlus (permPlus.back () + 1);
+    impl_iota (begin (permMinus), end (permMinus), limitPlus);
+    std::vector<size_t> permTarget;
+
+    std::set_difference (begin (permPlus), end (permPlus),
+			 begin (permMinus), end (permMinus),
+			 std::back_inserter (permTarget),
+			 [&](auto rowA, auto rowB)
+			 {
+			     for (auto
+				      itPlus = begin (contPlus),
+				      itPlusEnd = end (contPlus),
+				      itMinus = begin (contMinus),
+				      itMinusEnd = end (contMinus);
+				  itPlus != itPlusEnd && itMinus != itMinusEnd; ++itPlus, ++itMinus)
+			     {
+				 const auto& columnPlus = *itPlus;
+				 const auto& columnMinus = *itMinus;
+				 auto valPlus (rowA < limitPlus ? columnPlus.at (rowA) : columnMinus.at (rowA - limitPlus));
+				 auto valMinus (rowB < limitPlus ? columnPlus.at (rowB) : columnMinus.at (rowB - limitPlus));
+				 if (valPlus < valMinus)
+				     return true;
+				 else if (valMinus < valPlus)
+				     return false;
+			     }
+			     return false;
+			 });
+
+    return apply (contPlus, permTarget);
+}
+
+
 
 
 
 int main()
 {
-    const int dimensions = 2;
+    const int dimensions = 4;
     const int length = 20;
-    std::vector<std::vector<int> > values (dimensions, std::vector<int> (length,11));
+    const int lengthMinus = 15;
 
-    initialize (values, 0, 3);
+    const int minVal (0);
+    const int maxVal (3);
+    
+    std::vector<std::vector<int> > values (dimensions, std::vector<int> (length,0));
+    initialize (values, minVal, maxVal);
 
+    std::vector<std::vector<int> > valuesMinus (dimensions, std::vector<int> (lengthMinus,0));
+    initialize (valuesMinus, minVal, maxVal);
+
+    
     std::vector<size_t> permutation (length);
     impl_iota (begin (permutation), end (permutation), 0);
-    std::cout << "iota" << std::endl; std::copy (begin (permutation), end (permutation), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
+//    print ("iota", permutation);
 
     sort_permutation (values, permutation);
-    std::cout << "sorted" << std::endl; std::copy (begin (permutation), end (permutation), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
+//    print ("sorted", permutation);
     uniquify_permutation (values, permutation);
     
-    std::cout << "uniquified" << std::endl;
-    std::copy (begin (permutation), end (permutation), std::ostream_iterator<int>(std::cout, " "));
-    std::cout << std::endl;
+//    print ("uniquified", permutation);
 
     std::cout << "--- input ---" << std::endl;
     print (values);
-    std::for_each (begin (values), end (values), [&permutation](auto& col)
-		   {
-		       col = apply_permutation (col, permutation);
-		   });
+    values = apply (values, permutation);
     
     
 	
     std::cout << "--- sorted ---" << std::endl;
     print (values);
+
+
+    std::vector<size_t> permutationMinus (lengthMinus);
+    impl_iota (begin (permutationMinus), end (permutationMinus), 0);
+    sort_permutation (valuesMinus, permutationMinus);
+    uniquify_permutation (valuesMinus, permutationMinus);
+    valuesMinus = apply (valuesMinus, permutationMinus);
+
+    
+    std::cout << "--- sorted values to diff ---" << std::endl;
+    print (valuesMinus);
+
+    std::cout << "--- diffing ---" << std::endl;
+    auto diff = difference_permutation (values, valuesMinus);
+
+//    std::cout << "diff result" << std::endl; std::copy (begin (diff), end (permDiff), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
+    std::cout << "diff result" << std::endl;
+    print (diff);
 }
 
