@@ -16,6 +16,7 @@
     #define HAS_RANDOM 1
     #define HAS_LAMBADS 1
     #define HAS_AUTO 1
+    #define HAS_IOTA 1
 
 
 #else
@@ -157,7 +158,7 @@ void print (const String& name, const Container& values)
 
 
 
-
+#ifndef HAS_IOTA
 template <class ForwardIterator, class T>
 void impl_iota (ForwardIterator first, ForwardIterator last, T val)
 {
@@ -168,6 +169,7 @@ void impl_iota (ForwardIterator first, ForwardIterator last, T val)
         ++val;
     }
 }
+#endif
 
 
 #ifndef HAS_LAMBDAS
@@ -409,11 +411,19 @@ Container difference_permutation (const Container& contPlus, const Container& co
     // by their values. From 0 to limitPlus --> contPlus, from limitPlus+1 to end for contMinus
     
     std::vector<size_t> permPlus (contPlus.at (0).size (), 0);
+    #ifdef HAS_IOTA
+    std::iota (begin (permPlus), end (permPlus), 0);
+    #else
     impl_iota (begin (permPlus), end (permPlus), 0);
+    #endif
     std::vector<size_t> permMinus (contMinus.at (0).size (), 0);
 
     size_t limitPlus (permPlus.back () + 1);
+    #ifdef HAS_IOTA
+    std::iota (begin (permMinus), end (permMinus), limitPlus);
+    #else
     impl_iota (begin (permMinus), end (permMinus), limitPlus);
+    #endif
     std::vector<size_t> permTarget;
 
     std::set_difference (begin (permPlus), end (permPlus),
@@ -467,7 +477,11 @@ int main()
 
     
     std::vector<size_t> permutation (length);
+    #ifdef HAS_IOTA
+    std::iota (begin (permutation), end (permutation), 0);
+    #else
     impl_iota (begin (permutation), end (permutation), 0);
+    #endif
 //    print ("iota", permutation);
 
     sort_permutation (values, permutation);
@@ -487,7 +501,11 @@ int main()
 
 
     std::vector<size_t> permutationMinus (lengthMinus);
+    #ifdef HAS_IOTA
+    std::iota (begin (permutationMinus), end (permutationMinus), 0);
+    #else
     impl_iota (begin (permutationMinus), end (permutationMinus), 0);
+    #endif
     sort_permutation (valuesMinus, permutationMinus);
     uniquify_permutation (valuesMinus, permutationMinus);
     valuesMinus = apply (valuesMinus, permutationMinus);
