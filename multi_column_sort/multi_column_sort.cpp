@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <iterator>
 #include <functional>
+#include <cassert>
 
 
 #define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
@@ -14,7 +15,7 @@
     #pragma message( "C++11 version detected")
 
     #define HAS_RANDOM 1
-    #define HAS_LAMBADS 1
+    #define HAS_LAMBDAS 1
     #define HAS_AUTO 1
     #define HAS_IOTA 1
 
@@ -289,23 +290,25 @@ Sortee apply_permutation(const Sortee& vec, const Permutation& p)
 {
     Sortee sorted_vec;
     sorted_vec.reserve (p.size ());
-    
-    // std::transform (p.begin(), p.end(), std::inserter (sorted_vec, sorted_vec.end ()), [&](std::size_t i)
-    //                 {
-    //                     return vec[i];
-    //                 });
+    #ifdef HAS_LAMBDAS
+    std::transform (p.begin(), p.end(), std::inserter (sorted_vec, sorted_vec.end ()), [&](std::size_t i)
+                    {
+                        return vec[i];
+                    });
 
+    #else
     // --- alternative version for older compilers
     typename std::back_insert_iterator<Sortee> itSorted = std::back_inserter (sorted_vec);
     for (std::vector<size_t>::const_iterator itP = p.begin (), itPEnd = p.end (); itP != itPEnd; ++itP, ++itSorted)
     {
         *itSorted = vec[*itP];
     }
-    
+    #endif
     return sorted_vec;
 }
 
 
+#ifndef HAS_LAMBDAS
 template <typename Permutation>
 struct ApplyPermutation
 {
@@ -330,8 +333,9 @@ struct ApplyPermutation
 private:
     const Permutation& m_permutation;
 };
+#endif
 
-
+#ifndef HAS_LAMBDAS
 template <typename Container, typename Permutation>
 Container apply (const Container& values, const Permutation& permutation)
 {
@@ -340,23 +344,23 @@ Container apply (const Container& values, const Permutation& permutation)
 		    ApplyPermutation<Permutation>(permutation));
     return result;
 }    
-
-// template <typename Container>
-// Container apply (const Container& values, const auto& permutation)
-// {
-//     Container result;
-//     std::transform (begin (values), end (values), std::inserter (result, result.end ()), [&permutation](const auto& col)
-// 		   {
-// 		       return apply_permutation (col, permutation);
-// 		   });
-//     return result;
-// }    
-
-
-
+#else
+template <typename Container>
+Container apply (const Container& values, const auto& permutation)
+{
+    Container result;
+    std::transform (begin (values), end (values), std::inserter (result, result.end ()), [&permutation](const auto& col)
+		   {
+		       return apply_permutation (col, permutation);
+		   });
+    return result;
+}    
+#endif
 
 
 
+
+#ifndef HAS_LAMBDAS
 template <typename Container>
 struct MultiColumnDifferenceWeakOrdering
 {
@@ -399,7 +403,32 @@ private:
 
     const size_t m_limitPlus;
 };
-
+#else
+auto multiColumWeakOrdering (const auto& contPlus, const auto& contMinus, size_t limitPlus)
+{
+    std::cout << "mcwo : limitPlus = " << limitPlus << std::endl;
+    return [&, limitPlus](auto rowA, auto rowB)
+    {
+	for (auto
+		 itPlus = begin (contPlus),
+		 itPlusEnd = end (contPlus),
+		 itMinus = begin (contMinus),
+		 itMinusEnd = end (contMinus);
+	     itPlus != itPlusEnd && itMinus != itMinusEnd; ++itPlus, ++itMinus)
+	{
+	    const auto& columnPlus = *itPlus;
+	    const auto& columnMinus = *itMinus;
+	    auto valPlus (rowA < limitPlus ? columnPlus.at (rowA) : columnMinus.at (rowA - limitPlus));
+	    auto valMinus (rowB < limitPlus ? columnPlus.at (rowB) : columnMinus.at (rowB - limitPlus));
+	    if (valPlus < valMinus)
+		return true;
+	    else if (valMinus < valPlus)
+		return false;
+	}
+	return false;
+    };
+}
+#endif
 
 
 
@@ -409,6 +438,12 @@ Container difference_permutation (const Container& contPlus, const Container& co
 {
     // distinguish  between the indices (permutations) for contPlus from those for contMinus
     // by their values. From 0 to limitPlus --> contPlus, from limitPlus+1 to end for contMinus
+
+    if (contPlus.at (0).size () == 0)
+	return Container ();
+    
+    if (contMinus.at (0).size () == 0)
+	return contPlus;
     
     std::vector<size_t> permPlus (contPlus.at (0).size (), 0);
     #ifdef HAS_IOTA
@@ -426,30 +461,14 @@ Container difference_permutation (const Container& contPlus, const Container& co
     #endif
     std::vector<size_t> permTarget;
 
-    std::set_difference (begin (permPlus), end (permPlus),
+    std::set_difference	(begin (permPlus), end (permPlus),
 			 begin (permMinus), end (permMinus),
 			 std::back_inserter (permTarget),
+			 #ifndef HAS_LAMBDAS
 			 MultiColumnDifferenceWeakOrdering<Container> (contPlus, contMinus, limitPlus)
-			 // [&](auto rowA, auto rowB)
-			 // {
-			 //     for (auto
-			 // 	      itPlus = begin (contPlus),
-			 // 	      itPlusEnd = end (contPlus),
-			 // 	      itMinus = begin (contMinus),
-			 // 	      itMinusEnd = end (contMinus);
-			 // 	  itPlus != itPlusEnd && itMinus != itMinusEnd; ++itPlus, ++itMinus)
-			 //     {
-			 // 	 const auto& columnPlus = *itPlus;
-			 // 	 const auto& columnMinus = *itMinus;
-			 // 	 auto valPlus (rowA < limitPlus ? columnPlus.at (rowA) : columnMinus.at (rowA - limitPlus));
-			 // 	 auto valMinus (rowB < limitPlus ? columnPlus.at (rowB) : columnMinus.at (rowB - limitPlus));
-			 // 	 if (valPlus < valMinus)
-			 // 	     return true;
-			 // 	 else if (valMinus < valPlus)
-			 // 	     return false;
-			 //     }
-			 //     return false;
-			 // }
+			 #else
+			 multiColumWeakOrdering (contPlus, contMinus, limitPlus)
+			 #endif
 	);
 
     return apply (contPlus, permTarget);
@@ -458,15 +477,88 @@ Container difference_permutation (const Container& contPlus, const Container& co
 
 
 
+template <typename Container>
+void uniquify (Container& cont)
+{
+    std::vector<size_t> permutation (cont.at(0).size (), 0);
+#ifdef HAS_IOTA
+    std::iota (begin (permutation), end (permutation), size_t(0));
+#else
+    //                impl_iota (begin (permutation), end (permutation), size_t(0));
+    impl_iota (permutation.begin (), permutation.end (), size_t(0));
+#endif
+
+    sort_permutation (cont, permutation);
+    uniquify_permutation (cont, permutation);
+    cont = apply (cont, permutation);
+}
+
+
+#ifdef HAS_LAMBDAS
+template <typename Container>
+Container& operator+= (Container& cont, const Container& contAdd)
+{
+    assert (cont.size () == contAdd.size ());
+    auto itAdd = begin (contAdd);
+    std::for_each (begin (cont), end (cont), [&itAdd](auto& column)
+		   {
+		       column.insert (end (column), begin (*itAdd), end (*itAdd));
+		       ++itAdd;
+		   });
+    uniquify (cont);
+    return cont;
+}
+#else
+template <typename Container>
+Container& operator+= (Container& cont, const Container& contAdd)
+{
+    assert (cont.size () == contAdd.size ());
+    typename Container::const_iterator itAdd = begin (contAdd);
+    for (typename Container::iterator itC = begin (cont), itCEnd = end (cont); itC != itCEnd; ++itC)
+    {
+	typename Container::value_type& column = *itC; 
+	column.insert (end (column), begin (*itAdd), end (*itAdd));
+	++itAdd;
+    }
+    uniquify (cont);
+    return cont;
+}
+#endif
+
+
+template <typename Container>
+Container operator- (const Container& contPlus, const Container& contMinus)
+{
+    Container diff (difference_permutation (contPlus, contMinus));
+    return diff;
+}
+
+template <typename Container>
+Container& operator-= (Container& contPlus, const Container& contMinus)
+{
+    contPlus = difference_permutation (contPlus, contMinus);
+    return contPlus;
+}
+
+
+template <typename Container>
+Container operator+ (const Container& cont, const Container& contAdd)
+{
+    Container contSum (cont);
+    return contSum += contAdd;
+}
+
+
+
 
 int main()
 {
-    const int dimensions = 4;
-    const int length = 20;
-    const int lengthMinus = 15;
+    const int dimensions = 1;
+    const int length = 10;
+    const int lengthMinus = 5;
 
     const int minVal (0);
-    const int maxVal (3);
+    const int maxVal (15);
 
     typedef std::vector<std::vector<int> > container_type;
     container_type values (dimensions, std::vector<int> (length,0));
@@ -500,25 +592,27 @@ int main()
     print (values);
 
 
-    std::vector<size_t> permutationMinus (lengthMinus);
-    #ifdef HAS_IOTA
-    std::iota (begin (permutationMinus), end (permutationMinus), 0);
-    #else
-    impl_iota (begin (permutationMinus), end (permutationMinus), 0);
-    #endif
-    sort_permutation (valuesMinus, permutationMinus);
-    uniquify_permutation (valuesMinus, permutationMinus);
-    valuesMinus = apply (valuesMinus, permutationMinus);
+    uniquify (valuesMinus);
 
     
     std::cout << "--- sorted values to diff ---" << std::endl;
     print (valuesMinus);
 
+
     std::cout << "--- diffing ---" << std::endl;
-    container_type diff = difference_permutation (values, valuesMinus);
+    container_type diff = values - valuesMinus;
 
 //    std::cout << "diff result" << std::endl; std::copy (begin (diff), end (permDiff), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
     std::cout << "diff result" << std::endl;
     print (diff);
+
+    std::cout << "--- diffing Minus---" << std::endl;
+    container_type diffMinus = valuesMinus -  values;
+    print (diffMinus);
+
+    values += diffMinus;
+    std::cout << "adding difference between valuesMinus and values" << std::endl;
+    print (values);
+
 }
 
