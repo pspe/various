@@ -418,11 +418,11 @@ auto multiColumWeakOrdering (const auto& contPlus, const auto& contMinus, size_t
 	{
 	    const auto& columnPlus = *itPlus;
 	    const auto& columnMinus = *itMinus;
-	    auto valPlus (rowA < limitPlus ? columnPlus.at (rowA) : columnMinus.at (rowA - limitPlus));
-	    auto valMinus (rowB < limitPlus ? columnPlus.at (rowB) : columnMinus.at (rowB - limitPlus));
-	    if (valPlus < valMinus)
+	    auto valA (rowA < limitPlus ? columnPlus.at (rowA) : columnMinus.at (rowA - limitPlus));
+	    auto valB (rowB < limitPlus ? columnPlus.at (rowB) : columnMinus.at (rowB - limitPlus));
+	    if (valA < valB)
 		return true;
-	    else if (valMinus < valPlus)
+	    else if (valB < valA)
 		return false;
 	}
 	return false;
@@ -567,13 +567,17 @@ int main()
     std::vector<std::vector<int> > valuesMinus (dimensions, std::vector<int> (lengthMinus,0));
     initialize (valuesMinus, minVal, maxVal);
 
+
+    print (values - valuesMinus);
+    print (valuesMinus - values);
+    
     
     std::vector<size_t> permutation (length);
     #ifdef HAS_IOTA
     std::iota (begin (permutation), end (permutation), 0);
     #else
     impl_iota (begin (permutation), end (permutation), 0);
-    #endif
+#endif
 //    print ("iota", permutation);
 
     sort_permutation (values, permutation);
