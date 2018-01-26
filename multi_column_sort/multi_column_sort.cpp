@@ -10,8 +10,16 @@
 #define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #define CLANG_VERSION (__clang_major__ * 10000 + __clang_minor__ * 100 + __clang_patchlevel__)
 
+//#define STRIFY(s) XSTRIFY(s)
+//#define XSTRIFY(s) #s
+
+// #pragma message ("GCC_VERSION = " STRIFY(GCC_VERSION))
+// #pragma message ("__cplusplus = " STRIFY(__cplusplus))
+// #pragma message ("CLANG_VERSION = " STRIFY(CLANG_VERSION))
+
 // generic "begin" and "end" similar to those in C++11 (but not complete). 
-#if (defined(GCC_VERSION) && GCC_VERSION >= 50200 && __cplusplus >= 201103L) || (defined(_MSC_VER) && _MSC_VER >= 1900) || (defined(CLANG_VERSION) && CLANG_VERSION >= 3000)
+#if (defined(GCC_VERSION) && GCC_VERSION >= 50200 && __cplusplus >= 201102L) || (defined(_MSC_VER) && _MSC_VER >= 1900) || (defined(CLANG_VERSION) && CLANG_VERSION >= 3000)
+//#if 0
     #pragma message( "C++11 version detected")
 
     #define HAS_RANDOM 1
@@ -72,7 +80,8 @@ T randomValue (T minValue, T maxValue)
 
 
 #ifdef HAS_AUTO
-auto uniform (auto minValue, auto maxValue)
+template <typename T>
+auto uniform (T minValue, T maxValue)
 {
     return
 	[minValue, maxValue](auto& container)
@@ -85,14 +94,16 @@ auto uniform (auto minValue, auto maxValue)
 }
 
 
-void initialize (auto& values, auto from, auto to)
+template <typename CONTAINER, typename T>
+void initialize (CONTAINER& values, T from, T to)
 {
     std::for_each (begin (values), end (values), uniform (from, to));
 }
 
 
 
-void print (const auto& values)
+template <typename CONTAINER>
+void print (const CONTAINER& values)
 {
     std::for_each (begin (values), end (values), [](const auto& row)
 		   {
@@ -104,7 +115,8 @@ void print (const auto& values)
 		   });
 }
 
-void print (const auto& name, const auto& values)
+template <typename N, typename CONTAINER>
+void print (const N& name, const CONTAINER& values)
 {
     std::cout << name << std::endl; std::copy (begin (values), end (values), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
 }
@@ -345,10 +357,10 @@ Container apply (const Container& values, const Permutation& permutation)
     return result;
 }    
 #else
-template <typename Container>
-Container apply (const Container& values, const auto& permutation)
+template <typename CONTAINER, typename PERMUTATION>
+CONTAINER apply (const CONTAINER& values, const PERMUTATION& permutation)
 {
-    Container result;
+    CONTAINER result;
     std::transform (begin (values), end (values), std::inserter (result, result.end ()), [&permutation](const auto& col)
 		   {
 		       return apply_permutation (col, permutation);
@@ -404,7 +416,8 @@ private:
     const size_t m_limitPlus;
 };
 #else
-auto multiColumWeakOrdering (const auto& contPlus, const auto& contMinus, size_t limitPlus)
+template <typename CONT_PLUS, typename CONT_MINUS>
+auto multiColumWeakOrdering (const CONT_PLUS& contPlus, const CONT_MINUS& contMinus, size_t limitPlus)
 {
     std::cout << "mcwo : limitPlus = " << limitPlus << std::endl;
     return [&, limitPlus](auto rowA, auto rowB)
