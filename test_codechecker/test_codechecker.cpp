@@ -130,6 +130,7 @@ int main()
         size_t y = val << 63;
         size_t z = val << 64;
         size_t a = val << 65;
+	size_t c = val << 67;
     }
     
     {
