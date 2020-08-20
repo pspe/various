@@ -1,4 +1,3 @@
-
 from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,7 +27,7 @@ class MeanVariance:
         try:
             for x in values:
                 self.add (x)
-        except TypeError, te:
+        except TypeError:
             self.add (values)
 
         return self
@@ -443,138 +442,138 @@ def bucket (data, **kwargs):
         
 
 def testFlat ():
-    print "-----------------------"
-    print "--- test flat ---"
+    print ("-----------------------")
+    print ("--- test flat ---")
     m = EstimationMatrix ()
     m. add (SIDE.LEFT, Block (unique = 50, multiplicity = 3))
     m. add (SIDE.RIGHT, Block (unique = 50, multiplicity = 3))
 
-    print m
+    print (m)
 
-    print "filter left 20"
+    print ("filter left 20")
     m.filter (SIDE.LEFT, 20)
 
-    print m
+    print (m)
 
 def testFlatHigh ():
-    print "-----------------------"
-    print "--- test flat-high ---"
+    print ("-----------------------")
+    print ("--- test flat-high ---")
     m = EstimationMatrix ()
     m. add (SIDE.LEFT, Block (unique = 50, multiplicity = 3))
     m. add (SIDE.RIGHT, Block (unique = 50, multiplicity = 3))
     m. add (SIDE.LEFT, Block (unique = 10, multiplicity = 15))
     m. add (SIDE.RIGHT, Block (unique = 10, multiplicity = 15))
 
-    print m
+    print (m)
 
-    print "filter left 30"
+    print ("filter left 30")
     m.filter (SIDE.LEFT, 30)
 
-    print m
+    print (m)
     
 
 def testLopsided ():
-    print "-----------------------"
-    print "--- test lopsided ---"
+    print ("-----------------------")
+    print ("--- test lopsided ---")
     m = EstimationMatrix ()
     m. add (SIDE.LEFT, Block (unique = 50, multiplicity = 3))
     m. add (SIDE.LEFT, Block (unique = 10, multiplicity = 20))
 
     m. add (SIDE.RIGHT, Block (unique = 350, multiplicity = 1))
 
-    print m
+    print (m)
 
-    print "filter left 30"
+    print ("filter left 30")
     m.filter (SIDE.LEFT, 30)
 
-    print m
+    print (m)
     
 def testLopsidedSlim ():
-    print "-----------------------"
-    print "--- test lopsided slim ---"
+    print ("-----------------------")
+    print ("--- test lopsided slim ---")
     m = EstimationMatrix ()
     m. add (SIDE.LEFT, Block (unique = 50, multiplicity = 3))
     m. add (SIDE.LEFT, Block (unique = 10, multiplicity = 20))
 
     m. add (SIDE.RIGHT, Block (unique = 175, multiplicity = m.size (SIDE.LEFT)/175))
 
-    print m
+    print (m)
 
-    print "filter left 30"
+    print ("filter left 30")
     m.filter (SIDE.LEFT, 30)
 
-    print m
+    print (m)
 
 def testLopsidedSlim_include ():
-    print "-----------------------"
-    print "--- test lopsided include ---"
+    print ("-----------------------")
+    print ("--- test lopsided include ---")
     m = EstimationMatrix ()
     m. add (SIDE.LEFT, Block (unique = 50, multiplicity = 3))
     m. add (SIDE.LEFT, Block (unique = 1, multiplicity = 20, marker = 111))
     m. add (SIDE.LEFT, Block (unique = 1, multiplicity = 20))
 
     m. add (SIDE.RIGHT, Block (unique = 45, multiplicity = m.size (SIDE.LEFT)/45))
-    print m
+    print (m)
 
-    print "filter left unique-20 include block with marker 111"
+    print ("filter left unique-20 include block with marker 111")
     m.filter (SIDE.LEFT, m.unique (SIDE.LEFT)-20, include = [111])
-    print m
+    print (m)
 
-    print "filter left 1 include block with marker 111"
+    print ("filter left 1 include block with marker 111")
     m.filter (SIDE.LEFT, 1, include = [111])
-    print m
+    print (m)
     
 
 def testLopsidedSlim_exclude ():
-    print "-----------------------"
-    print "--- test lopsided exclude ---"
+    print ("-----------------------")
+    print ("--- test lopsided exclude ---")
     m = EstimationMatrix ()
     m. add (SIDE.LEFT, Block (unique = 50, multiplicity = 3))
     m. add (SIDE.LEFT, Block (unique = 1, multiplicity = 20, marker = 111))
     m. add (SIDE.LEFT, Block (unique = 1, multiplicity = 20))
 
     m. add (SIDE.RIGHT, Block (unique = 45, multiplicity = m.size (SIDE.LEFT)/45))
-    print m
+    print (m)
 
     # print "filter left unique-20 include block with marker 111"
     # m.filter (SIDE.LEFT, m.unique (SIDE.LEFT)-20, include = [111])
-    # print m
+    # print (m)
 
-    print "filter remove 1, exclude block with marker 111"
+    print ("filter remove 1, exclude block with marker 111")
     m.filter (SIDE.LEFT, m.unique (SIDE.LEFT) - 1, exclude = [111])
-    print m
+    print (m)
 
 
 def testBroadAndFlat ():
-    print "-----------------------"
-    print "--- test broad and flat ---"
+    print ("-----------------------")
+    print ("--- test broad and flat ---")
     m = EstimationMatrix ()
 
     m. add (SIDE.LEFT, Block (unique = 5000, multiplicity = 6))
     m. add (SIDE.RIGHT, Block (unique = 30000, multiplicity = 1))
-    print m
+    print (m)
 
-    print "filter left to target 1"
+    print ("filter left to target 1")
     m.filter (SIDE.LEFT, 1)
-    print m
+    print (m)
 
 
 def testRemoveNothing ():
-    print "-----------------------"
-    print "--- test remove nothing ---"
+    print ("-----------------------")
+    print ("--- test remove nothing ---")
     m = EstimationMatrix ()
 
     m. add (SIDE.LEFT, Block (unique = 800, multiplicity = 1))
     m. add (SIDE.RIGHT, Block (unique = 20, multiplicity = 40))
-    print m
+    print (m)
 
-    print "filter left to target 800"
+    print ("filter left to target 800")
     m.filter (SIDE.LEFT, 800)
-    print m
+    print (m)
 
 def testInconsistentLeftRight ():
-    print "-----------------------"
-    print "--- test inconsistent left right ---"
+    print ("-----------------------")
+    print ("--- test inconsistent left right ---")
     m = EstimationMatrix ()
 
     m. add (SIDE.LEFT, Block (unique = 1, multiplicity = 0))
@@ -582,20 +581,20 @@ def testInconsistentLeftRight ():
 
     m. add (SIDE.RIGHT, Block (unique = 1, multiplicity = 0))
     m. add (SIDE.RIGHT, Block (unique = 80, multiplicity = 10))
-    print m
+    print (m)
 
-    print "filter left to target 1000"
+    print ("filter left to target 1000")
     m.filter (SIDE.LEFT, 1000)
-    print m
+    print (m)
     
-    print "filter right to target 80"
+    print ("filter right to target 80")
     m.filter (SIDE.RIGHT, 80)
-    print m
+    print (m)
     
 
 def testFilterIssue ():
-    print "-----------------------"
-    print "--- test filter issue ---"
+    print ("-----------------------")
+    print ("--- test filter issue ---")
     m = EstimationMatrix ()
 
     m. add (SIDE.LEFT, Block (unique = 80, multiplicity = 0))
@@ -603,15 +602,15 @@ def testFilterIssue ():
 
     m. add (SIDE.RIGHT, Block (unique = 200, multiplicity = 0))
     m. add (SIDE.RIGHT, Block (unique = 800, multiplicity = 1))
-    print m
+    print (m)
 
-    print "filter right to target 400"
+    print ("filter right to target 400")
     m.filter (SIDE.RIGHT, 400)
-    print m
+    print (m)
     
 def testFilterRightTo1OnInconsistent ():
-    print "-----------------------"
-    print "--- test filter right to 1 ---"
+    print ("-----------------------")
+    print ("--- test filter right to 1 ---")
     m = EstimationMatrix ()
 
     m. add (SIDE.LEFT, Block (unique = 0, multiplicity = 0))
@@ -619,15 +618,15 @@ def testFilterRightTo1OnInconsistent ():
 
     m. add (SIDE.RIGHT, Block (unique = 20, multiplicity = 0))
     m. add (SIDE.RIGHT, Block (unique = 80, multiplicity = 10))
-    print m
+    print (m)
 
-    print "filter right to target 1"
+    print ("filter right to target 1")
     m.filter (SIDE.RIGHT, 1)
-    print m
+    print (m)
     
 def testRemoveOneLarge ():
-    print "-----------------------"
-    print "--- test remove 1 large ---"
+    print ("-----------------------")
+    print ("--- test remove 1 large ---")
     m = EstimationMatrix ()
 
     m. add (SIDE.LEFT, Block (unique = 20, multiplicity = 0))
@@ -642,116 +641,116 @@ def testRemoveOneLarge ():
     m. add (SIDE.RIGHT, Block (unique = 20, multiplicity = 0))
     m. add (SIDE.RIGHT, Block (unique = 1, multiplicity = 31, marker = 222))
     m. add (SIDE.RIGHT, Block (unique = 80, multiplicity = 10))
-    print m
+    print (m)
 
-    print "filter left to target 1"
+    print ("filter left to target 1")
     m.filter (SIDE.LEFT, 1, include = [111])
-    print m
+    print (m)
 
 
 def testFilterOneOfLargeAverage ():
-    print "-----------------------"
-    print "--- test remove 1 large ---"
+    print ("-----------------------")
+    print ("--- test remove 1 large ---")
     m = EstimationMatrix ()
 
     m. add (SIDE.LEFT, Block (unique = 10000, multiplicity = 4))
     m. add (SIDE.RIGHT, Block (unique = 10, multiplicity = 4000))
-    print m
+    print (m)
 
-    print "filter right to target 1"
+    print ("filter right to target 1")
     m.filter (SIDE.RIGHT, 1, include = [111]) # marker not present
-    print m
+    print (m)
 
 
 def testFilterRemovalOf31To1Target ():
-    print "-----------------------"
-    print "--- test removal of 31 To 1 Target large ---"
+    print ("-----------------------")
+    print ("--- test removal of 31 To 1 Target large ---")
     m = EstimationMatrix ()
 
     m. add (SIDE.LEFT, Block (unique = 1, multiplicity = 31, marker = 111))
     m. add (SIDE.LEFT, Block (unique = 1, multiplicity = 29))
     m. add (SIDE.LEFT, Block (unique = 80, multiplicity = 10))
     m. add (SIDE.RIGHT, Block (unique = 860, multiplicity = 1))
-    print m
+    print (m)
 
-    print "filter right to target 1"
+    print ("filter right to target 1")
     m.filter (SIDE.LEFT, 1, include = [111])
-    print m
+    print (m)
 
 
 
 def testScaleEqual ():
-    print "-----------------------"
-    print "--- test scale equal ---"
+    print ("-----------------------")
+    print ("--- test scale equal ---")
     m = EstimationMatrix ()
     m. add (SIDE.LEFT, Block (unique = 50, multiplicity = 50))
     m. add (SIDE.RIGHT, Block (unique = 50, multiplicity = 50))
 
-    print m
+    print (m)
 
-    print "scale left by 2.0"
+    print ("scale left by 2.0")
     m.scale (SIDE.LEFT, m.full (SIDE.LEFT) * 2.0)
 
-    print m
+    print (m)
 
-    print "scale right by 2.0"
+    print ("scale right by 2.0")
     m.scale (SIDE.RIGHT, m.full (SIDE.RIGHT) * 2.0)
 
-    print m
+    print (m)
 
     
 
 def testScaleLopsided ():
-    print "-----------------------"
-    print "--- test scale lopsided ---"
+    print ("-----------------------")
+    print ("--- test scale lopsided ---")
     m = EstimationMatrix ()
     m. add (SIDE.LEFT, Block (unique = 50, multiplicity = 3))
     m. add (SIDE.LEFT, Block (unique = 10, multiplicity = 20))
 
     m. add (SIDE.RIGHT, Block (unique = 350, multiplicity = 1))
 
-    print m
+    print (m)
 
-    print "scale left by 1.5"
+    print ("scale left by 1.5")
     m.scale (SIDE.LEFT, m.full (SIDE.LEFT) * 1.5)
 
-    print m
+    print (m)
 
-    print "scale right by 2.0"
+    print ("scale right by 2.0")
     m.scale (SIDE.RIGHT, m.full (SIDE.RIGHT) * 2.0)
 
-    print m
+    print (m)
 
 
 def testScaleFlatHigh ():
-    print "-----------------------"
-    print "--- test scale flat high ---"
+    print ("-----------------------")
+    print ("--- test scale flat high ---")
     m = EstimationMatrix ()
     m. add (SIDE.RIGHT, Block (unique = 100, multiplicity = 1))
 
     m. add (SIDE.LEFT, Block (unique = 1, multiplicity = 40))
     m. add (SIDE.LEFT, Block (unique = 9, multiplicity = (m.size (SIDE.RIGHT)-m.size(SIDE.LEFT))/9.0))
 
-    print m
+    print (m)
 
     m.filter (SIDE.LEFT, m.full (SIDE.LEFT) * 2.0)
     
-    print m
+    print (m)
 
 def testScaleFlatHigh_otherSide ():
-    print "-----------------------"
-    print "--- test scale flat high other side ---"
+    print ("-----------------------")
+    print ("--- test scale flat high other side ---")
     m = EstimationMatrix ()
     m. add (SIDE.RIGHT, Block (unique = 100, multiplicity = 1))
 
     m. add (SIDE.LEFT, Block (unique = 1, multiplicity = 40))
     m. add (SIDE.LEFT, Block (unique = 9, multiplicity = (m.size (SIDE.RIGHT)-m.size(SIDE.LEFT))/9.0))
 
-    print m
+    print (m)
 
     m.filter (SIDE.RIGHT, m.full (SIDE.RIGHT) * 2.0)
 
-    print m
+    print (m)
 
 
 
@@ -799,9 +798,9 @@ def draw (data, **kwargs):
         forward["mean"].append (mv.mean ())
         forward["stdDev"].append (mv.stdDev ())
 
-    print " "
-    print forward["mean"]
-    print " "
+    print (" ")
+    print (forward["mean"])
+    print (" ")
 
     backward = { "mean" : [], "stdDev" : []}
     mv = MeanVariance ()
@@ -810,9 +809,9 @@ def draw (data, **kwargs):
         backward["mean"].append (mv.mean ())
         backward["stdDev"].append (mv.stdDev ())
 
-    print " "
-    print backward["mean"]
-    print " "
+    print (" ")
+    print (backward["mean"])
+    print (" ")
 
     backward["mean"] = list(reversed(backward["mean"]))
     backward["stdDev"] = list(reversed(backward["stdDev"]))
@@ -909,21 +908,21 @@ def testMeanVariance ():
     mv = MeanVariance ()
     mv += data
 
-    print " "
-    print "data = ",data
-    print "mean = ",mv.mean ()
-    print "variance = ",mv.variance_corr ()
-    print "stddev = ",mv.stdDev_corr ()
+    print (" ")
+    print ("data = ",data)
+    print ("mean = ",mv.mean ())
+    print ("variance = ",mv.variance_corr ())
+    print ("stddev = ",mv.stdDev_corr ())
     
     mv2 = MeanVariance ()
     data = list (reversed(data))
     mv2 += data
     
-    print " "
-    print "data = ",data
-    print "mean = ",mv.mean ()
-    print "variance = ",mv.variance_corr ()
-    print "stddev = ",mv.stdDev_corr ()
+    print (" ")
+    print ("data = ",data)
+    print ("mean = ",mv.mean ())
+    print ("variance = ",mv.variance_corr ())
+    print ("stddev = ",mv.stdDev_corr ())
     
 
     
@@ -933,8 +932,3 @@ if __name__ == "__main__":
     #testDrawVarying ()
     #testMeanVarianceSimple ()
     #testMeanVariance ()
-
-
-
-    
-        
